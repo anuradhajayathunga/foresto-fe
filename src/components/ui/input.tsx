@@ -10,7 +10,7 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
         // Base
         'w-full rounded-lg border border-input bg-muted/40 px-3 py-2 text-sm text-foreground',
         'placeholder:text-muted-foreground/80',
-        'shadow-sm transition-colors transition-shadow outline-none',
+        'shadow-sm transition outline-none',
 
         // Hover (subtle SaaS polish)
         'hover:bg-muted/60',

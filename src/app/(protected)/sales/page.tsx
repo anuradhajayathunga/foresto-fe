@@ -173,31 +173,34 @@ export default function SalesPage() {
         <div className='flex items-center gap-2'>
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
-              <Button variant='outline' size='sm' className='h-9'>
-                <FileDown className='h-4 w-4 mr-2' />
+              <Button variant='outline' size='sm' className='h-9 gap-2'>
+                <FileDown className='h-4 w-4' />
                 Import
               </Button>
             </DialogTrigger>
-            <DialogContent className='sm:max-w-xl'>
-              <DialogHeader>
-                <DialogTitle>Bulk Data Import</DialogTitle>
-              </DialogHeader>
-              <DialogFooter className='py-2'>
+
+            <DialogContent className='sm:max-w-xl p-0 overflow-hidden'>
+              <div className='border-b border-border bg-muted/30 px-6 py-4'>
+                <DialogHeader className='space-y-1'>
+                  <DialogTitle className='text-base font-semibold'>
+                    Bulk Data Import
+                  </DialogTitle>
+                  <p className='text-xs text-muted-foreground'>
+                    Upload a CSV file to import data. You can validate first
+                    using Dry run.
+                  </p>
+                </DialogHeader>
+              </div>
+
+              <div className='px-6 py-5'>
                 <CsvImporter
                   kind='sales'
-                  title='Import Sales'
-                  description='Imports sales from CSV. Does NOT deduct ingredients.'
+                  // title='Import Sales'
+                  // description='Imports sales from CSV. Does NOT deduct ingredients.'
                 />
-              </DialogFooter>
+              </div>
             </DialogContent>
           </Dialog>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-9 gap-2 hidden sm:flex'
-          >
-            <Download className='h-4 w-4' /> Export
-          </Button>
           <Link href='/sales/new'>
             <Button size='sm' className='h-9 gap-2 shadow-sm'>
               <Plus className='h-4 w-4' /> Create Order
@@ -256,6 +259,13 @@ export default function SalesPage() {
           </div>
 
           <div className='flex items-center gap-2 w-full sm:w-auto'>
+            <Button
+              variant='outline'
+              size='sm'
+              className='h-9 gap-2 hidden sm:flex'
+            >
+              <Download className='h-4 w-4' /> Export
+            </Button>
             <Button
               variant='outline'
               size='sm'
