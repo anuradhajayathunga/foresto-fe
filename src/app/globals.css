@@ -1,0 +1,387 @@
+@import "tailwindcss";
+
+/* If you are using tailwindcss-animate plugin, in v4 
+  you usually don't need the JS plugin if you define animations in CSS.
+  However, if you depend on the plugin specifically:
+  @plugin "tailwindcss-animate"; 
+*/
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* --- 1. Fonts --- */
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+
+  /* --- 2. Breakpoints (Screens) --- */
+  --breakpoint-2xsm: 375px;
+  --breakpoint-xsm: 425px;
+  --breakpoint-3xl: 2000px;
+
+  /* --- 3. Colors (Ported from JS Config) --- */
+  
+  /* Standard Base Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Restaurant Namespace */
+  --color-restaurant-primary: var(--restaurant-primary);
+  --color-restaurant-primary-dark: var(--restaurant-primary-dark);
+  --color-restaurant-primary-light: var(--restaurant-primary-light);
+  --color-restaurant-sidebar-bg: var(--restaurant-sidebar-bg);
+  --color-restaurant-sidebar-hover: var(--restaurant-sidebar-hover);
+  --color-restaurant-success: var(--restaurant-success);
+  --color-restaurant-warning: var(--restaurant-warning);
+  --color-restaurant-error: var(--restaurant-error);
+
+  /* Custom Gray Scale (from JS) */
+  --color-gray-DEFAULT: #F3F4F6;
+  --color-gray-dark: #111827;
+  --color-gray-1: #F9FAFB;
+  --color-gray-2: #F3F4F6;
+  --color-gray-3: #E5E7EB;
+  --color-gray-4: #D1D5DB;
+  --color-gray-5: #9CA3AF;
+  --color-gray-6: #6B7280;
+  --color-gray-7: #374151;
+
+  /* Custom Dark Scale (from JS) */
+  --color-dark-DEFAULT: #111827;
+  --color-dark-2: #1F2937;
+  --color-dark-3: #374151;
+  --color-dark-4: #4B5563;
+  --color-dark-5: #6B7280;
+  --color-dark-6: #9CA3AF;
+  --color-dark-7: #D1D5DB;
+  --color-dark-8: #E5E7EB;
+
+  /* Extended Status Colors */
+  --color-green-DEFAULT: #10B981;
+  --color-green-dark: #059669;
+  --color-green-light: #34D399;
+  --color-green-light-1: #10B981;
+  --color-green-light-2: #57DE8F;
+  --color-green-light-3: #82E6AC;
+  --color-green-light-4: #ACEFC8;
+  --color-green-light-5: #C2F3D6;
+  --color-green-light-6: #DAF8E6;
+  --color-green-light-7: #E9FBF0;
+
+  --color-red-DEFAULT: #EF4444;
+  --color-red-dark: #DC2626;
+  --color-red-light: #F87171;
+  --color-red-light-2: #FCA5A5;
+  --color-red-light-3: #FECACA;
+  --color-red-light-4: #FEE2E2;
+  --color-red-light-5: #FEF2F2;
+  --color-red-light-6: #FEF2F2;
+
+  --color-blue-DEFAULT: #3B82F6;
+  --color-blue-dark: #2563EB;
+  --color-blue-light: #60A5FA;
+  --color-blue-light-2: #93C5FD;
+  --color-blue-light-3: #BFDBFE;
+  --color-blue-light-4: #DBEAFE;
+  --color-blue-light-5: #EFF6FF;
+
+  --color-yellow-dark: #F59E0B;
+  --color-yellow-dark-2: #D97706;
+  --color-yellow-light: #FCD34D;
+  --color-yellow-light-4: #FFFBEB;
+
+  --color-brand-300: #93C5FD;
+  --color-brand-400: #60A5FA;
+  --color-brand-500: #3B82F6;
+  --color-brand-600: #2563EB;
+  --color-brand-800: #1E40AF;
+  --color-brand-950: #172554;
+  
+  --color-error-500: #EF4444;
+
+  /* --- 4. Spacing (Partial port of your huge list) --- */
+  /* Note: In v4, --spacing-4_5 corresponds to p-4.5 */
+  --spacing-4_5: 1.125rem;
+  --spacing-5_5: 1.375rem;
+  --spacing-6_5: 1.625rem;
+  --spacing-7_5: 1.875rem;
+  --spacing-8_5: 2.125rem;
+  --spacing-9_5: 2.375rem;
+  --spacing-10_5: 2.625rem;
+  --spacing-11: 2.75rem;
+  --spacing-11_5: 2.875rem;
+  --spacing-12_5: 3.125rem;
+  --spacing-13: 3.25rem;
+  --spacing-13_5: 3.375rem;
+  --spacing-14: 3.5rem;
+  --spacing-15: 3.75rem;
+  /* Add more here from your list if strictly needed, 
+     though v4 arbitrary values (p-[4.125rem]) are often preferred 
+     over defining 50+ custom spacing variables. */
+
+  /* --- 5. Border Radius --- */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* --- 6. Animations & Keyframes --- */
+  --animate-linspin: linspin 1568.2353ms linear infinite;
+  --animate-easespin: easespin 5332ms cubic-bezier(0.4, 0, 0.2, 1) infinite both;
+  --animate-left-spin: left-spin 1333ms cubic-bezier(0.4, 0, 0.2, 1) infinite both;
+  --animate-right-spin: right-spin 1333ms cubic-bezier(0.4, 0, 0.2, 1) infinite both;
+  --animate-ping-once: ping 5s cubic-bezier(0, 0, 0.2, 1);
+  --animate-rotating: rotating 30s linear infinite;
+  --animate-topbottom: topbottom 60s infinite alternate linear;
+  --animate-bottomtop: bottomtop 60s infinite alternate linear;
+  --animate-spin-1_5: spin 1.5s linear infinite;
+  --animate-spin-2: spin 2s linear infinite;
+  --animate-spin-3: spin 3s linear infinite;
+  --animate-line1: line 10s infinite linear;
+  --animate-line2: line-revert 8s infinite linear;
+  --animate-line3: line 7s infinite linear;
+
+  @keyframes linspin { 100% { transform: rotate(360deg); } }
+  @keyframes easespin {
+    12.5% { transform: rotate(135deg); }
+    25% { transform: rotate(270deg); }
+    37.5% { transform: rotate(405deg); }
+    50% { transform: rotate(540deg); }
+    62.5% { transform: rotate(675deg); }
+    75% { transform: rotate(810deg); }
+    87.5% { transform: rotate(945deg); }
+    100% { transform: rotate(1080deg); }
+  }
+  @keyframes left-spin {
+    0% { transform: rotate(130deg); }
+    50% { transform: rotate(-5deg); }
+    100% { transform: rotate(130deg); }
+  }
+  @keyframes right-spin {
+    0% { transform: rotate(-130deg); }
+    50% { transform: rotate(5deg); }
+    100% { transform: rotate(-130deg); }
+  }
+  @keyframes rotating {
+    0%, 100% { transform: rotate(360deg); }
+    50% { transform: rotate(0deg); }
+  }
+  @keyframes topbottom {
+    0%, 100% { transform: translate3d(0, -100%, 0); }
+    50% { transform: translate3d(0, 0, 0); }
+  }
+  @keyframes bottomtop {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -100%, 0); }
+  }
+  @keyframes line {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(100%); }
+  }
+  @keyframes line-revert {
+    0%, 100% { transform: translateY(100%); }
+    50% { transform: translateY(0); }
+  }
+}
+
+/* --- CSS Variables Root Definitions --- */
+:root {
+  --radius: 0.5rem;
+
+  /* Neutral, modern base */
+  --background: #f9fafb; /* gray-50 */
+  --foreground: #111827; /* gray-900 */
+
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  /* Restaurant Primary (Orange) */
+  --primary: #f97316; /* orange-500 */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6; /* gray-100 */
+  --secondary-foreground: #111827;
+
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280; /* gray-500 */
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
+
+  --destructive: #ef4444; /* red-500 */
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e7eb; /* gray-200 */
+  --input: #e5e7eb;
+  --ring: #f97316;
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f4f6;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #f97316;
+
+  /* Extra Restaurant Tokens (Mapped to JS values) */
+  --restaurant-primary: #f97316;
+  --restaurant-primary-dark: #ea580c; /* orange-600 */
+  --restaurant-primary-light: #fdba74; /* orange-300 */
+  --restaurant-sidebar-bg: #1f2937; /* gray-800 */
+  --restaurant-sidebar-hover: #374151; /* gray-700 */
+  --restaurant-success: #10b981; /* green-500 */
+  --restaurant-warning: #f59e0b; /* amber-500 */
+  --restaurant-error: #ef4444; /* red-500 */
+}
+
+/* Dark Mode Overrides */
+.dark {
+  --background: #030712; /* gray-950 */
+  --foreground: #f9fafb; /* gray-50 */
+
+  --card: #111827; /* gray-900 */
+  --card-foreground: #f9fafb;
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
+
+  --primary: #fb923c; /* orange-400 */
+  --primary-foreground: #111827;
+  --secondary: #1f2937; /* gray-800 */
+  --secondary-foreground: #f9fafb;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af; /* gray-400 */
+  --accent: #1f2937;
+  --accent-foreground: #f9fafb;
+  --destructive: #f87171; /* red-400 */
+  --destructive-foreground: #f9fafb;
+
+  --border: #374151; /* gray-700 */
+  --input: #374151;
+  --ring: #fb923c;
+
+  --sidebar: #111827;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #fb923c;
+  --sidebar-primary-foreground: #111827;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: #fb923c;
+
+  /* Restaurant Dark Mode */
+  --restaurant-primary: #fb923c;
+  --restaurant-primary-dark: #f97316;
+  --restaurant-primary-light: #fdba74;
+  --restaurant-sidebar-bg: #111827;
+  --restaurant-sidebar-hover: #1f2937;
+  --restaurant-success: #34d399; /* green-400 */
+  --restaurant-warning: #fbbf24; /* amber-400 */
+  --restaurant-error: #f87171; /* red-400 */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+}
+
+/* Utilities (Ported from JS and CSS) */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .custom-scrollbar { @apply overflow-auto; }
+  .custom-scrollbar::-webkit-scrollbar { @apply w-2 h-2; }
+  .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { @apply rounded-full bg-gray-300 dark:bg-gray-700; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { @apply bg-gray-400 dark:bg-gray-600; }
+
+  /* Layout helpers */
+  .chat-height { @apply h-[calc(100vh_-_8.125rem)] lg:h-[calc(100vh_-_5.625rem)]; }
+  .inbox-height { @apply h-[calc(100vh_-_8.125rem)] lg:h-[calc(100vh_-_5.625rem)]; }
+
+  /* Helper utilities using the new variables */
+  .bg-restaurant-primary { background-color: var(--restaurant-primary); }
+  .text-restaurant-primary { color: var(--restaurant-primary); }
+  .border-restaurant-primary { border-color: var(--restaurant-primary); }
+  .bg-restaurant-sidebar { background-color: var(--restaurant-sidebar-bg); }
+  .bg-restaurant-sidebar-hover { background-color: var(--restaurant-sidebar-hover); }
+}
+
+/* Components */
+@layer components {
+  .primary-select option {
+    @apply bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  }
+  .primary-select option:checked,
+  .primary-select option:focus,
+  .primary-select option:hover {
+    @apply bg-primary text-primary-foreground;
+  }
+}
+
+/* 3rd Party Polish */
+.apexcharts-legend-text { @apply !text-foreground; }
+.apexcharts-text { @apply !fill-foreground; }
+.apexcharts-xcrosshairs { @apply !fill-border; }
+.apexcharts-gridline { @apply !stroke-border; }
+
+.flatpickr-calendar {
+  @apply !rounded-xl !border !border-border !bg-background !text-foreground !shadow-lg;
+}
+.flatpickr-day:hover { @apply !bg-muted; }
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  @apply !bg-primary !text-primary-foreground !border-primary;
+}
+
+/* Input Inputs */
+input[type="search"]::-webkit-search-cancel-button { @apply appearance-none; }
+.custom-input-date::-webkit-calendar-picker-indicator {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+  @apply cursor-pointer opacity-60 hover:opacity-100;
+}
