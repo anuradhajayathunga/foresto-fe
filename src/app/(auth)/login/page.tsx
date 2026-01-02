@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GoogleIcon, XIcon } from '@/assets/icons';
+import logo from '@/assets/logo/logo-v1.svg';
+
 import {
   Activity,
   CheckCircle2,
