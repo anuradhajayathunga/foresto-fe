@@ -1,13 +1,13 @@
 'use client';
 
 import { SearchIcon } from '@/assets/icons';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useSidebarContext } from '../sidebars/sidebar-context';
 import { MenuIcon } from './icons';
 import { Notification } from './notification';
 import { ThemeToggleSwitch } from './theme-toggle';
 import { UserInfo } from './user-info';
+import { Logo } from '@/components/logo';
 
 export function Header() {
   const { toggleSidebar, isMobile } = useSidebarContext();
@@ -24,13 +24,7 @@ export function Header() {
 
       {isMobile && (
         <Link href={'/'} className='ml-2 max-[430px]:hidden min-[375px]:ml-4'>
-          <Image
-            src={'/images/logo/logo-icon.svg'}
-            width={32}
-            height={32}
-            alt=''
-            role='presentation'
-          />
+          <Logo size={40} showText={false} />
         </Link>
       )}
 

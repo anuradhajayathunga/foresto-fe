@@ -229,7 +229,7 @@
   --primary: #f97316; /* orange-500 */
   --primary-foreground: #ffffff;
 
-  --secondary: #f3f4f6; /* gray-100 */
+  --secondary: #ff4136; /* gray-100 */
   --secondary-foreground: #111827;
 
   --muted: #f3f4f6;
@@ -277,7 +277,7 @@
 
   --primary: #fb923c; /* orange-400 */
   --primary-foreground: #111827;
-  --secondary: #1f2937; /* gray-800 */
+  --secondary: #ff4136; /* gray-800 */
   --secondary-foreground: #f9fafb;
   --muted: #1f2937;
   --muted-foreground: #9ca3af; /* gray-400 */

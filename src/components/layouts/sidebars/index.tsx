@@ -55,7 +55,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'min-w-xs overflow-hidden border-r border-gray-200 bg-white transition-[width] duration-200 ease-linear dark:border-gray-800 dark:bg-gray-dark z-30',
+          'min-w-xs overflow-hidden border-r border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 transition-[width] duration-200 ease-linear z-30',
           isMobile ? 'fixed bottom-0 top-0 z-30' : 'sticky top-0 h-screen',
           isOpen ? 'w-full' : 'w-0'
         )}
@@ -65,31 +65,34 @@ export function Sidebar() {
       >
         <div className='flex h-full flex-col py-10 pl-[25px] pr-[7px]'>
           <div className='relative pr-4.5'>
-            <Link
-              href={'/'}
-              onClick={() => isMobile && toggleSidebar()}
-              className='px-0 py-2.5 min-[850px]:py-0'
-            >
-              <Logo />
-            </Link>
-
-            {isMobile && (
-              <button
-                onClick={toggleSidebar}
-                className='absolute left-3/4 right-4.5 top-1/2 -translate-y-1/2 text-right'
+            <div className='flex items-center justify-between gap-3'>
+              <Link
+                href='/'
+                onClick={() => isMobile && toggleSidebar()}
+                className='flex items-center'
+                //  rounded-xl px-2 py-2 hover:bg-muted/40 transition
+                aria-label='Go to dashboard'
               >
-                <span className='sr-only'>Close Menu</span>
+                <Logo />
+              </Link>
 
-                <ArrowLeftIcon className='ml-auto size-7' />
-              </button>
-            )}
+              {isMobile && (
+                <button
+                  onClick={toggleSidebar}
+                  className='rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition'
+                >
+                  <span className='sr-only'>Close Menu</span>
+                  <ArrowLeftIcon className='size-6' />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Navigation */}
           <div className='custom-scrollbar mt-6 flex-1 overflow-y pr-3 min-[850px]:mt-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'>
             {NAV_DATA.map((section) => (
               <div key={section.label} className='mb-6'>
-                <h2 className='mb-5 text-sm font-medium text-dark-4 dark:text-dark-6'>
+                <h2 className='mb-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
                   {section.label}
                 </h2>
 
