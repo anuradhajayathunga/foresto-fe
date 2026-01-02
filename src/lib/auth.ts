@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 type Tokens = { access: string; refresh: string };
 
@@ -94,7 +94,8 @@ export async function getMe() {
   const res = await authFetch('/api/auth/me/');
   const data = await safeReadJson(res);
   if (!res.ok) {
-    const msg = data?.detail || data?.message || `Request failed (${res.status})`;
+    const msg =
+      data?.detail || data?.message || `Request failed (${res.status})`;
     throw new HttpError(msg, res.status, data);
   }
   return data as { id: number; username: string; email: string; role?: string };
@@ -110,13 +111,21 @@ async function refreshAccessToken(): Promise<string> {
     const refresh = getRefreshToken();
     if (!refresh) throw new HttpError('No refresh token', 401);
 
-    const data = await requestJson<{ access: string }>(`${API}/api/auth/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh }),
-    });
+    const data = await requestJson<{ access: string }>(
+      `${API}/api/auth/token/refresh/`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      }
+    );
 
-    if (!data?.access) throw new HttpError('Refresh failed: no access token returned', 401, data);
+    if (!data?.access)
+      throw new HttpError(
+        'Refresh failed: no access token returned',
+        401,
+        data
+      );
 
     localStorage.setItem('access', data.access);
     return data.access;
@@ -135,7 +144,8 @@ export async function authFetch(path: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers || {});
 
   const body = options.body;
-  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const isFormData =
+    typeof FormData !== 'undefined' && body instanceof FormData;
 
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');

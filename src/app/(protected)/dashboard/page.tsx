@@ -1,14 +1,10 @@
 import { PaymentsOverview } from '@/components/Charts/payments-overview';
 import { UsedDevices } from '@/components/Charts/used-devices';
 import { WeeksProfit } from '@/components/Charts/weeks-profit';
-// import { TopChannels } from '@/components/Tables/top-channels';
-// import { TopChannelsSkeleton } from '@/components/Tables/top-channels/skeleton';
 import { createTimeFrameExtractor } from '@/utils/timeframe-extractor';
 import { Suspense } from 'react';
-import { ChatsCard } from './_components/chats-card';
 import { DashboardKpiCards } from './_components/overview-cards';
 import { OverviewCardsSkeleton } from './_components/overview-cards/skeleton';
-import CalendarBox from '@/components/CalenderBox';
 import { SalesOverview } from './_components/sales-overview';
 
 type PropsType = {

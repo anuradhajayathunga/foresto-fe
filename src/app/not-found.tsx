@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorIcon } from '@/assets/icons';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 
@@ -7,6 +8,7 @@ const NotFound: React.FC = () => {
   const [loaded, setLoaded] = useState(true);
 
   useEffect(() => {
+    // Simulate the 500ms preloader behavior from the original AlpineJS
     const timeout = setTimeout(() => setLoaded(false), 500);
     return () => clearTimeout(timeout);
   }, []);
@@ -17,7 +19,7 @@ const NotFound: React.FC = () => {
     <div className='relative min-h-screen'>
       {loaded && (
         <div className='fixed left-0 top-0 z-[999999] flex h-screen w-screen items-center justify-center bg-white dark:bg-black'>
-          <div className='h-16 w-16 animate-spin rounded-full border-4 border-solid border-brand-500 border-t-transparent' />
+          <div className='h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
         </div>
       )}
 
@@ -34,16 +36,9 @@ const NotFound: React.FC = () => {
             ERROR
           </h1>
 
-          <img
-            src='/images/error/404.svg'
-            alt='404'
-            className='dark:hidden mx-auto'
-          />
-          <img
-            src='/images/error/404-dark.svg'
-            alt='404'
-            className='hidden dark:block mx-auto'
-          />
+          <div className='text-primary mx-auto h-auto w-full max-w-[472px]'>
+            <ErrorIcon className='' />
+          </div>
 
           <p className='mb-6 mt-10 text-base text-gray-700 dark:text-gray-400 sm:text-lg'>
             We can’t seem to find the page you are looking for!
@@ -57,10 +52,12 @@ const NotFound: React.FC = () => {
           </Link>
         </div>
 
+        {/* Footer */}
         <p className='absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-sm text-gray-500 dark:text-gray-400'>
           &copy; {year} - Foresto
         </p>
       </div>
+      {/* ===== Page Wrapper End ===== */}
     </div>
   );
 };

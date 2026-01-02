@@ -14,6 +14,7 @@ import { LogOutIcon, SettingsIcon, UserIcon } from './icons';
 import { useRouter } from 'next/navigation';
 import { useAuth, type User } from '@/hooks/useAuthToken';
 import toast from 'react-hot-toast';
+import { clearTokens } from '@/lib/auth';
 
 function UserInfoSkeleton() {
   return (
@@ -41,22 +42,20 @@ export function UserInfo() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login'); 
+      router.push('/login');
     }
   }, [authLoading, user, router]);
 
   const handleLogout = () => {
     // Clear tokens (or whatever you stored on login)
     try {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      clearTokens(); 
+      setIsOpen(false);
+      toast.success('Logged out successfully.');
+      router.push('/login');
     } catch (e) {
       console.error('Error clearing auth tokens', e);
     }
-
-    setIsOpen(false);
-    toast.success('Logged out successfully.');
-    router.push('/login');
   };
 
   if (authLoading || !user) {
