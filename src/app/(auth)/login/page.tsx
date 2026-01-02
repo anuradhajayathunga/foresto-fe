@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AuthButton } from '@/components/auth/AuthButtons';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 type LoginResponse = {
   access: string;
@@ -130,14 +131,22 @@ export default function LoginPage() {
             <div>
               <div className='flex items-center gap-3'>
                 <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 backdrop-blur border border-white/15'>
-                  <ShieldCheck className='h-6 w-6' />
+                  <Image
+                    src={logo}
+                    alt='Foresto'
+                    width='50'
+                    height='50'
+                    className='p-[10%]' // p-[15%] gives it breathing room
+                    priority
+                  />
                 </div>
                 <div className='leading-tight'>
-                  <div className='text-3xl font-bold tracking-tight'>
-                    Foresto
+                  <div className='text-3xl font-bold tracking-tight  leading-none'>
+                    foresto
+                    <span className='text-primary'>.</span>
                   </div>
                   <div className='text-xs text-white/65 font-medium'>
-                    {/* Secure back-office access */}
+                    AI Powered Restaurant Admin
                   </div>
                 </div>
               </div>
