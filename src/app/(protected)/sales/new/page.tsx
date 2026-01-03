@@ -137,7 +137,7 @@ export default function NewSalePage() {
         discount: discountNum.toFixed(2),
         tax: taxNum.toFixed(2),
         items: cart.map((c) => ({ menu_item: c.id, qty: c.qty })),
-        status: 'DRAF',
+        status: 'PAID',
       };
       const created = await createSale(payload);
       router.push(`/sales/${created.id}`);
