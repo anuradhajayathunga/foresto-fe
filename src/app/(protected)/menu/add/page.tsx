@@ -36,6 +36,7 @@ import {
   Save,
   Loader2,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function slugify(s: string) {
   return s
@@ -155,10 +156,17 @@ export default function AddMenuItemPage() {
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
-        <div className='flex flex-col items-center gap-2'>
-          <Loader2 className='h-8 w-8 animate-spin text-gray-900' />
-          <p className='text-sm text-gray-500'>Initializing editor...</p>
+      <div className='mx-auto max-w-6xl space-y-6 p-6'>
+        <div className='flex justify-between items-center'>
+          <Skeleton className='h-8 w-32' />
+          <Skeleton className='h-10 w-24' />
+        </div>
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          <div className='lg:col-span-2 space-y-6'>
+            <Skeleton className='h-[300px] w-full rounded-xl' />
+            <Skeleton className='h-[200px] w-full rounded-xl' />
+          </div>
+          <Skeleton className='h-[400px] w-full rounded-xl' />
         </div>
       </div>
     );
