@@ -67,9 +67,11 @@ flowchart LR
     BE --> R[(Redis / Queue)]
     BE --> ML[Forecasting / ML Service]
     ML --> DB
+````
 
 ### Frontend Internal Flow
 
+```mermaid
 flowchart TB
     Pages[Routes / Pages] --> Layouts[Layouts]
     Pages --> Features[Feature Modules]
@@ -77,4 +79,5 @@ flowchart TB
     Features --> API[API Client Layer]
     API -->|fetch/axios| Backend[(Backend API)]
     Features --> State[State Management]
+```
 
