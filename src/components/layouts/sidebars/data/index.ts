@@ -91,12 +91,12 @@ export const NAV_DATA: NavSection[] = [
         icon: Receipt,
         items: [],
       },
-      {
-        title: 'Analytics',
-        url: '/analytics',
-        icon: BarChart3,
-        items: [],
-      },
+      // {
+      //   title: 'Analytics',
+      //   url: '/analytics',
+      //   icon: BarChart3,
+      //   items: [],
+      // },
       {
         title: 'AI Forecasting',
         url: '/forecasting',

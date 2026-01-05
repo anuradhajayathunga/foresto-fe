@@ -363,7 +363,7 @@ export default function AddMenuItemPage() {
 
               {/* The Card Component being Previewed */}
               <Card className='overflow-hidden shadow-md border-gray-200'>
-                <div className='relative h-48 bg-gray-100 flex items-center justify-center text-gray-300'>
+                <div className='relative h-48 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300'>
                   <ImageIcon className='h-12 w-12' />
                   {/* Mock Badge in Preview */}
                   <div className='absolute top-3 right-3'>
