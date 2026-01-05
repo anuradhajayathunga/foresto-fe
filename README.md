@@ -67,3 +67,15 @@ flowchart LR
     BE --> Queue[(Redis/Celery)]
     BE --> ML[AI/Forecasting Service]
     ML --> DB
+
+### Frontend Internal Flow
+
+
+flowchart TB
+    App[App Router] --> Pages[Pages & Layouts]
+    Pages --> Server[Server Components]
+    Pages --> Client[Client Components]
+    Client --> UI[shadcn/ui Components]
+    Client --> API[API Layer (fetch/axios)]
+    API --> Backend[Backend API]
+    Client --> State[State Management]
