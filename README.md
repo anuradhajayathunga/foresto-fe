@@ -63,7 +63,7 @@ The frontend is designed to be **modular**, **scalable**, and **easy to collabor
 
 ---
 
-## Architecture
+## Architecture Diagram
 
 ### System Overview
 
@@ -96,3 +96,52 @@ flowchart TB
 * **Node.js:** v18+ (recommended)
 * **Package Manager:** npm
 * **Backend API:** Running foresto backend server
+
+### Main Libraries (`package.json` extract)
+
+``` json
+{
+ "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "apexcharts": "^5.3.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lottie-react": "^2.4.1",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "next-themes": "^0.4.6",
+    "react": "19.2.3",
+    "react-apexcharts": "^1.9.0",
+    "react-dom": "19.2.3",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.6.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "tw-animate-css": "^1.4.0",
+    "typescript": "^5"
+  }
+}
+```
