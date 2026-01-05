@@ -153,7 +153,7 @@ yarn install
 pnpm install
 ```
 
-### 3) Configure Environment Variables
+## Configure Environment Variables
 Create a `.env.local` file in the project root:
 ``` env
 # Base URL of the backend API (Django/DRF)
@@ -162,7 +162,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 > If your backend uses CORS, ensure the backend allows requests from `http://localhost:3000`.
 
 * * *
-### 4) Start Development Server
+### Start Development Server
 ``` bash
 npm run dev
 # or
@@ -173,3 +173,142 @@ pnpm dev
 > Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 * * *
+## Available Scripts
+``` bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+
+# Run linting
+npm run lint
+
+# Run TypeScript compiler
+npm run type-check
+
+# Run tests
+npm run test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Format code with Prettier
+npm run format
+
+# Check formatting
+npm run format:check
+```
+## Project Structure
+```
+smartrestaurant-frontend/
+├── public/                 # Static assets
+├── src/
+│   ├── app/               # Next.js 14 App Router
+│   │   ├── (auth)/        # Authentication routes
+│   │   ├── (dashboard)/   # Dashboard routes
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/        # Reusable UI components
+│   │   ├── ui/           # Primitive components (Button, Input, etc.)
+│   │   ├── layout/       # Layout components
+│   │   ├── charts/       # Chart components
+│   │   ├── tables/       # Table components
+│   │   ├── auth/         # Authentication logic
+│   │   ├── dashboard/    # Dashboard features
+│   │   ├── sales/        # Sales management
+│   │   ├── inventory/    # Inventory management
+│   │   ├── purchases/    # Purchasing management
+│   │   ├── forecasting/  # Forecasting features
+│   │   └── suppliers/    # Supplier management
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utilities and configurations
+│   │   ├── api/          # API client setup
+│   │   ├── auth/         # Authentication helpers
+│   │   ├── stores/       # Zustand stores
+│   │   ├── utils/        # Utility functions
+│   │   └── validation/   # Validation schemas
+│   └── types/            # TypeScript type definitions
+├── .env.example          # Environment variables template
+├── tailwind.config.ts   # Tailwind CSS configuration
+└── package.json
+```
+## API Integration
+``` typescript
+import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor for adding auth tokens
+apiClient.interceptors.request.use(/* ... */);
+
+// Response interceptor for handling errors
+apiClient.interceptors.response.use(/* ... */);
+
+export default apiClient;
+```
+### Feature API Modules
+Each feature has its own API module:
+``` typescript
+// src/features/forecasting/api.ts
+import apiClient from '@/lib/api/client';
+
+export const forecastingAPI = {
+  getForecasts: (params) => 
+    apiClient.get('/api/forecasting/', { params }),
+
+  triggerTraining: (data) => 
+    apiClient.post('/api/forecasting/train/', data),
+
+  getForecastHistory: (forecastId) => 
+    apiClient.get(`/api/forecasting/${forecastId}/history/`),
+};
+```
+## Authentication
+The frontend uses JWT authentication with refresh tokens:
+### Authentication Flow
+* User submits login credentials
+* Backend returns access token (short-lived) and refresh token (long-lived)
+* Tokens stored in secure, HTTP-only cookies
+* Access token included in Authorization header for API requests
+* On 401 responses, automatically refresh token using refresh token
+* On refresh failure, redirect to login page
+### Protected Routes
+Use middleware to protect routes:
+``` typescript
+// src/middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('smartrestaurant_auth');
+
+  if (!token && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+### Auth Context
+``` typescript
+// src/features/auth/context/AuthContext.tsx
+import { createContext } from 'react';
+
+export const AuthContext = createContext({
+  user: null,
+  login: async (credentials) => {},
+  logout: () => {},
+  isAuthenticated: false,
+});
+```
+## Testing & Quality
