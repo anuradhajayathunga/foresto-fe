@@ -144,6 +144,10 @@ cd <frontend-folder>
 ### 2) Install dependencies
 Using npm:
 ``` bash
+npm install
+```
+or yarn/pnpm:
+``` bash
 yarn install
 # or
 pnpm install
@@ -151,3 +155,11 @@ pnpm install
 
 ### 3) Configure Environment Variables
 Create a `.env.local` file in the project root:
+``` env
+# Base URL of the backend API (Django/DRF)
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+> If your backend uses CORS, ensure the backend allows requests from `http://localhost:3000`.
+
+* * *
+
