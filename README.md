@@ -81,3 +81,8 @@ flowchart TB
     Features --> State[State Management]
 ```
 
+Prerequisites
+
+Node.js v18+ (v20+ recommended)
+npm / yarn / pnpm
+Running backend API (local or hosted)
