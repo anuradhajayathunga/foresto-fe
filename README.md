@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SmartRestaurant AI — Frontend
 
-## Getting Started
+A modern, responsive web frontend for the **SmartRestaurant AI System**, built with **Next.js** (App Router). It provides intuitive dashboards and workflows for restaurant operations, including sales tracking, purchasing, inventory management, demand forecasting, and analytics.
 
-First, run the development server:
+The application securely communicates with the backend API for authentication, data fetching, and triggering AI-powered operations.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+[![Vercel Deploy](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<YOUR_FRONTEND_REPO_LINK>)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Table of Contents
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Project Structure](#project-structure)
+- [API Integration](#api-integration)
+- [Authentication](#authentication)
+- [Testing & Code Quality](#testing--code-quality)
+- [Deployment](#deployment)
+- [Branching Strategy & Contribution](#branching-strategy--contribution)
+- [Related Projects](#related-projects)
+- [License](#license)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Secure user authentication (login/logout)
+- Comprehensive dashboards with real-time KPIs (sales, inventory, purchases, forecasts)
+- CRUD operations for core entities (products, suppliers, purchase orders, etc.)
+- Forecasting interface to trigger model training and view predictions
+- Responsive design optimized for desktop and tablet
+- Modular, reusable components for maintainability
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> Update this list as new features are implemented.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Framework**: Next.js 15+ (App Router, Server Components, React Server Actions)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui (or your chosen library)
+- **HTTP Client**: Axios / native fetch
+- **Forms & Validation**: React Hook Form + Zod
+- **Charts**: Chart.js / Recharts
+- **State Management**: React Context / Zustand / TanStack Query (as needed)
+- **Authentication**: JWT (or session-based, matching backend)
+
+---
+
+## Architecture
+
+### System Overview
+
+```mermaid
+flowchart LR
+    User[Users] -->|Browser| FE[Frontend: Next.js]
+    FE -->|HTTPS API Calls| BE[Backend: Django/DRF]
+    BE --> DB[(PostgreSQL)]
+    BE --> Queue[(Redis/Celery)]
+    BE --> ML[AI/Forecasting Service]
+    ML --> DB
