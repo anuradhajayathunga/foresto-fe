@@ -51,14 +51,14 @@ The frontend is designed to be **modular**, **scalable**, and **easy to collabor
 
 ## Tech Stack
 
-- **Framework**: Next.js 15+ (App Router, Server Components, React Server Actions)
+- **Framework**: Next.js 18+ (App Router, Server Components, React Server Actions)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui 
 - **HTTP Client**: Axios / native fetch
 - **Forms & Validation**: React Hook Form + Zod
 - **Charts**: Chart.js / Recharts
-- **State Management**: React Context / Zustand / TanStack Query (as needed)
+- **State Management**: React Context / Zustand / TanStack Query
 - **Authentication**: JWT (or session-based, matching backend)
 
 ---
