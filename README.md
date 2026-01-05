@@ -1,4 +1,4 @@
-# Foresto | Modern and Elegant Restaurant Experience — Frontend (Next.js)
+# Foresto | Modern and Elegant Restaurant Experience — Frontend
 
 A modern, responsive web frontend for the **SmartRestaurant AI System**, built with **Next.js** (App Router). It provides intuitive dashboards and workflows for restaurant operations, including sales tracking, purchasing, inventory management, demand forecasting, and analytics.
 
