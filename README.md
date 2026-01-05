@@ -312,3 +312,24 @@ export const AuthContext = createContext({
 });
 ```
 ## Testing & Quality
+### Running Tests
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run specific test file
+npm run test -- src/features/auth/auth.test.ts
+```
+### Code Quality Tools
+* **ESLint:** Code linting with TypeScript support
+* **Prettier:** Code formatting
+* **TypeScript:** Static type checking
+* **Husky:** Git hooks for pre-commit checks
+
+* * *
