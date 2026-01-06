@@ -4,7 +4,7 @@ A modern, responsive web frontend for the **SmartRestaurant AI System**, built w
 
 The application securely communicates with the backend API for authentication, data fetching, and triggering AI-powered operations.
 
-[![Vercel Deploy](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<foresto-fe-ku6u-nr9d663rb-anuradhajayathungas-projects.vercel.app>)
+[![Vercel Deploy](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=<https://foresto-fe-ku6u.vercel.app/login>)
 
 ---
 
@@ -421,10 +421,10 @@ This project is part of an academic final year project at [Sri Lanka Institute o
 
 
 ## Maintainers & Team
-* Member 1: JAYATHUNGA A G I A — [GitHub](https://github.com/anuradhajayathunga)
-* Member 2: THILAKARATHNAW P N S — [GitHub](https://github.com/NethumThilakarathna)
-* Member 3: ALAWATHTHA K A — [GitHub](https://github.com/AlawaththaKA)
-* Member 4: Fernando W G P N — [GitHub](https://github.com/PraveenNavodya)
+* Member 1: [JAYATHUNGA A G I A](https://github.com/anuradhajayathunga)
+* Member 2: [THILAKARATHNAW P N S](https://github.com/NethumThilakarathna)
+* Member 3: [ALAWATHTHA K A](https://github.com/AlawaththaKA)
+* Member 4: [Fernando W G P N](https://github.com/PraveenNavodya)
 
 ## Support
 For issues, questions, or contributions:
