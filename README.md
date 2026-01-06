@@ -421,10 +421,10 @@ This project is part of an academic final year project at [Sri Lanka Institute o
 
 
 ## Maintainers & Team
-* Member 1: JAYATHUNGA A G I A — [GitHub](https://github.com/anuradhajayathunga)
-* Member 2: THILAKARATHNAW P N S — [GitHub](https://github.com/NethumThilakarathna)
-* Member 3: ALAWATHTHA K A — [GitHub](https://github.com/AlawaththaKA)
-* Member 4: Fernando W G P N — [GitHub](https://github.com/PraveenNavodya)
+* Member 1: [JAYATHUNGA A G I A](https://github.com/anuradhajayathunga)
+* Member 2: [THILAKARATHNAW P N S](https://github.com/NethumThilakarathna)
+* Member 3: [ALAWATHTHA K A](https://github.com/AlawaththaKA)
+* Member 4: [Fernando W G P N](https://github.com/PraveenNavodya)
 
 ## Support
 For issues, questions, or contributions:
