@@ -66,7 +66,7 @@ export default function AddMenuItemPage() {
   const [ok, setOk] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const canEdit = role === 'ADMIN' || role === 'MANAGER';
+  const canEdit = role === 'ADMIN' || role === 'MANAGER' || role === 'OWNER';
 
   useEffect(() => {
     (async () => {
