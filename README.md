@@ -189,7 +189,7 @@ Backend: [`http://127.0.0.1:8000/`](http://127.0.0.1:8000/)
 
 ### Backend (`backend/`)
 
-See [backend/README.md](backend/README.md) for detailed documentation.
+See [`web/backend/README.md`](web/backend/README.md) for detailed documentation.
 
 ```
 backend/
@@ -208,7 +208,7 @@ backend/
 
 ### Frontend (`frontend/`)
 
-See [frontend/README.md](frontend/README.md) for detailed documentation.
+See [`web/frontend/README.md`](web/frontend/README.md) for detailed documentation.
 
 ```
 frontend/
