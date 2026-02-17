@@ -15,11 +15,11 @@ export type TeamMember = {
 };
 
 /**
- * Expected backend endpoint: GET /api/auth/users/
- * Should return users filtered to request user's restaurant.
+ * Expected backend endpoint: GET /api/auth/team-users/
+ * Should return team-users filtered to request user's restaurant.
  */
 export async function listTeamMembers() {
-  const res = await authFetch('/api/auth/users/?ordering=-id');
+  const res = await authFetch('/api/auth/team-users/?ordering=-id');
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<TeamMember>(data);
@@ -38,7 +38,7 @@ export async function createTeamMember(payload: {
   last_name?: string;
   role: Exclude<TeamRole, 'OWNER' | 'ADMIN'>;
 }) {
-  const res = await authFetch('/api/auth/users/', {
+  const res = await authFetch('/api/auth/team-users/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -48,13 +48,13 @@ export async function createTeamMember(payload: {
 }
 
 /**
- * Expected backend endpoint: PATCH /api/auth/users/:id/
+ * Expected backend endpoint: PATCH /api/auth/team-users/:id/
  */
 export async function updateTeamMember(
   id: number,
   payload: Partial<Pick<TeamMember, 'first_name' | 'last_name' | 'role' | 'is_active'>>
 ) {
-  const res = await authFetch(`/api/auth/users/${id}/`, {
+  const res = await authFetch(`/api/auth/team-users/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
@@ -64,10 +64,10 @@ export async function updateTeamMember(
 }
 
 /**
- * Expected backend endpoint: DELETE /api/auth/users/:id/
+ * Expected backend endpoint: DELETE /api/auth/team-users/:id/
  */
 export async function deleteTeamMember(id: number) {
-  const res = await authFetch(`/api/auth/users/${id}/`, {
+  const res = await authFetch(`/api/auth/team-users/${id}/`, {
     method: 'DELETE',
   });
   if (!res.ok) {
