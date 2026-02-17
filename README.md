@@ -221,7 +221,7 @@ frontend/
 └── package.json
 ```
 
----
+
 
 ## 💻 Development
 
@@ -261,7 +261,7 @@ npm run lint                       # Run linter
 npm run test                       # Run tests
 ```
 
----
+
 
 ## ✅ Testing & Quality
 
@@ -281,7 +281,7 @@ npm run type-check
 npm run test
 ```
 
----
+
 
 ## 🚢 Deployment
 
@@ -299,7 +299,7 @@ npm run test
 3. Use managed PostgreSQL
 4. Deploy with Gunicorn + Nginx
 
----
+
 
 ## 🌳 Version Control & Collaboration
 
@@ -333,7 +333,7 @@ docs: update documentation
 test: add tests
 ```
 
----
+
 
 ## 🤝 Contributing
 
@@ -361,14 +361,14 @@ test: add tests
 
 5. **Wait for Review & Merge**
 
----
+
 
 ## 📄 License
 
 Academic final year project at **Sri Lanka Institute of Information Technology**  
 **License:** MIT
 
----
+
 
 ## 👥 Maintainers & Support
 
@@ -383,6 +383,6 @@ Academic final year project at **Sri Lanka Institute of Information Technology**
 - 🐛 [Report Issues](https://github.com/anuradhajayathunga/foresto/issues)
 - 💬 [Discussions](https://github.com/anuradhajayathunga/foresto/discussions)
 
----
+
 
 **Happy coding! Let's build something amazing together! 🚀**
