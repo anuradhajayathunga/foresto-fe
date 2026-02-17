@@ -8,7 +8,11 @@ export type Supplier = {
   address?: string;
   is_active: boolean;
 };
-
+export type PurchaseLineInput = {
+  item: number;
+  quantity: string;
+  unit_price: string;
+};
 export type PurchaseInvoice = {
   id: number;
   supplier: number;
@@ -63,9 +67,10 @@ export async function createPurchaseInvoice(payload: {
   invoice_no?: string;
   invoice_date: string;
   discount?: string;
+  status?: 'DRAFT' | 'POSTED' | 'VOID';
   tax?: string;
   note?: string;
-  lines: Array<{ item: number; qty: string; unit_cost: string }>;
+  lines: PurchaseLineInput[];
 }) {
   const res = await authFetch('/api/purchases/invoices/', {
     method: 'POST',

@@ -1,97 +1,85 @@
-import { authFetch } from '@/lib/auth';
-
-const API = process.env.NEXT_PUBLIC_API_BASE_URL;
+import { authFetch, unwrapList } from '@/lib/auth';
 
 export type Category = {
   id: number;
   name: string;
-  slug: string;
+  slug?: string;
+  is_active?: boolean;
 };
 
 export type MenuItem = {
   id: number;
   category: number;
-  category_name: string;
   name: string;
   slug: string;
-  description: string;
+  description?: string;
   price: string;
   is_available: boolean;
-  is_active?:boolean;
+  image_url?: string;
+  sort_order?: number;
 };
 
-export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API}/api/menu/categories/?is_active=true`);
-  if (!res.ok) throw new Error('Failed to load categories');
-  return res.json();
+export async function fetchCategories() {
+  const res = await authFetch('/api/menu/categories/?is_active=true');
+  const data = await res.json().catch(() => []);
+  if (!res.ok) throw data;
+  return unwrapList<Category>(data);
 }
 
-export async function fetchItems(
-  categoryId?: number,
-  search?: string
-): Promise<MenuItem[]> {
-  const params = new URLSearchParams();
-  // params.set('is_available', 'true');
-  if (categoryId) params.set('category', String(categoryId));
-  if (search) params.set('search', search);
-
-  const res = await fetch(`${API}/api/menu/items/?${params.toString()}`);
-  if (!res.ok) throw new Error('Failed to load items');
-  return res.json();
+export async function fetchItems(params?: Record<string, string>) {
+  const qs = new URLSearchParams(params || {}).toString();
+  const res = await authFetch(`/api/menu/items/${qs ? `?${qs}` : ''}`);
+  const data = await res.json().catch(() => []);
+  if (!res.ok) throw data;
+  return unwrapList<MenuItem>(data);
 }
 
-export async function fetchMenuItem(id: number): Promise<MenuItem> {
-  const res = await fetch(`${API}/api/menu/items/${id}/`);
-
-  if (!res.ok) {
-    if (res.status === 404) throw new Error('Item not found');
-    throw new Error('Failed to load item details');
-  }
-
-  return res.json();
+export async function fetchMenuItem(id: number) {
+  const res = await authFetch(`/api/menu/items/${id}/`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as MenuItem;
 }
 
-// staff/admin create item
-export async function createMenuItem(payload: {
+export type CreateMenuItemPayload = {
   category: number;
   name: string;
   slug: string;
   description?: string;
   price: string;
   is_available?: boolean;
-}) {
+  image_url?: string;
+  sort_order?: number;
+};
+
+export async function createMenuItem(payload: CreateMenuItemPayload) {
   const res = await authFetch('/api/menu/items/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
-  return data;
+  return data as MenuItem;
 }
 
-export async function updateMenuItem(id: number, payload: Partial<MenuItem>) {
+export async function updateMenuItem(id: number, payload: Partial<CreateMenuItemPayload>) {
   const res = await authFetch(`/api/menu/items/${id}/`, {
-    method: 'PATCH', // Ensure your backend supports PATCH for partial updates
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
-
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
-  return data;
+  return data as MenuItem;
 }
 
 export async function deleteMenuItem(id: number) {
   const res = await authFetch(`/api/menu/items/${id}/`, {
     method: 'DELETE',
   });
-
-  if (res.status === 204) return true;
-
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw error;
+    const data = await res.json().catch(() => ({}));
+    throw data;
   }
-
   return true;
 }
 
@@ -103,14 +91,9 @@ export async function createCategory(payload: {
 }) {
   const res = await authFetch('/api/menu/categories/', {
     method: 'POST',
-    body: JSON.stringify({
-      ...payload,
-      sort_order: payload.sort_order ?? 0,
-      is_active: payload.is_active ?? true,
-    }),
+    body: JSON.stringify(payload),
   });
-
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
-  return data;
+  return data as Category;
 }

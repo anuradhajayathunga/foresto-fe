@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { listMovements, StockMovement } from "@/lib/inventory";
+import { listStockMovements, StockMovement } from "@/lib/inventory";
 
 import {
   ArrowLeft,
@@ -10,7 +10,7 @@ import {
   TrendingDown,
   TrendingUp,
   User,
-  ArrowRightLeft
+  ArrowRightLeft,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export default function MovementsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await listMovements(itemId);
+        const data = await listStockMovements(itemId);
         setRows(data);
       } finally {
         setLoading(false);
@@ -73,10 +73,14 @@ export default function MovementsPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex flex-col">
-          <h1 className="text-xl font-semibold tracking-tight">Movement History</h1>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Movement History
+          </h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-             <span>Product SKU/ID:</span>
-             <code className="bg-muted px-1 py-0.5 rounded font-mono text-xs">{itemId}</code>
+            <span>Product SKU/ID:</span>
+            <code className="bg-muted px-1 py-0.5 rounded font-mono text-xs">
+              {itemId}
+            </code>
           </div>
         </div>
       </div>
@@ -87,22 +91,30 @@ export default function MovementsPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Received</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Received
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">+{stats.totalIn}</div>
+            <div className="text-2xl font-bold text-green-600">
+              +{stats.totalIn}
+            </div>
             <p className="text-xs text-muted-foreground">Lifetime Stock In</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Dispatched</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Dispatched
+            </CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">-{stats.totalOut}</div>
+            <div className="text-2xl font-bold text-red-600">
+              -{stats.totalOut}
+            </div>
             <p className="text-xs text-muted-foreground">Lifetime Stock Out</p>
           </CardContent>
         </Card>
@@ -117,7 +129,9 @@ export default function MovementsPage() {
               {stats.net > 0 ? "+" : ""}
               {stats.net}
             </div>
-            <p className="text-xs text-muted-foreground">Overall Volume Delta</p>
+            <p className="text-xs text-muted-foreground">
+              Overall Volume Delta
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -137,13 +151,19 @@ export default function MovementsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   Loading history...
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   No stock movements recorded yet.
                 </TableCell>
               </TableRow>
@@ -152,17 +172,30 @@ export default function MovementsPage() {
                 <TableRow key={r.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                            {new Date(r.created_at).toLocaleDateString(undefined, {
-                                month: 'short', day: 'numeric', year: 'numeric'
-                            })}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                            {new Date(r.created_at).toLocaleTimeString(undefined, {
-                                hour: '2-digit', minute: '2-digit'
-                            })}
-                        </span>
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {r.created_at
+                          ? new Date(r.created_at).toLocaleDateString(
+                              undefined,
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )
+                          : "Unknown"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {r.created_at
+                          ? new Date(r.created_at).toLocaleTimeString(
+                              undefined,
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )
+                          : "--:--"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -182,29 +215,43 @@ export default function MovementsPage() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className={`text-right font-mono font-medium ${
-                      r.movement_type === "IN" ? "text-green-600" : "text-red-600"
-                  }`}>
+                  <TableCell
+                    className={`text-right font-mono font-medium ${
+                      r.movement_type === "IN"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
                     {r.movement_type === "IN" ? "+" : "-"}
                     {r.quantity}
                   </TableCell>
                   <TableCell>
                     <div className="max-w-[300px] truncate text-sm">
-                        {r.reason || <span className="text-muted-foreground italic">No reason provided</span>}
+                      {r.reason || (
+                        <span className="text-muted-foreground italic">
+                          No reason provided
+                        </span>
+                      )}
                     </div>
                     {/* Optionally display r.note if it exists in your data structure */}
                     {/* {r.note && <div className="text-xs text-muted-foreground truncate">{r.note}</div>} */}
                   </TableCell>
                   <TableCell className="flex justify-end">
                     <div className="flex items-center gap-2">
-                        <div className="text-right hidden sm:block">
-                            <div className="text-xs font-medium">{r.created_by_email?.split('@')[0] || "System"}</div>
+                      <div className="text-right hidden sm:block">
+                        <div className="text-xs font-medium">
+                          {r.created_by_email?.split("@")[0] || "System"}
                         </div>
-                        <Avatar className="h-8 w-8 border">
-                            <AvatarFallback className="bg-muted text-[10px]">
-                                {r.created_by_email ? r.created_by_email.substring(0, 2).toUpperCase() : <User className="h-4 w-4" />}
-                            </AvatarFallback>
-                        </Avatar>
+                      </div>
+                      <Avatar className="h-8 w-8 border">
+                        <AvatarFallback className="bg-muted text-[10px]">
+                          {r.created_by_email ? (
+                            r.created_by_email.substring(0, 2).toUpperCase()
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                   </TableCell>
                 </TableRow>

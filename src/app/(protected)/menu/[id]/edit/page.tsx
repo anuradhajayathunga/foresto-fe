@@ -85,7 +85,7 @@ export default function EditMenuItemPage() {
   const [saving, setSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const canEdit = role === 'ADMIN' || role === 'MANAGER';
+  const canEdit = role === 'ADMIN' || role === 'MANAGER' || role === 'OWNER';
 
   // --- 1. Initial Data Fetch ---
   useEffect(() => {

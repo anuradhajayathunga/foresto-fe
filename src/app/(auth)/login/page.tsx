@@ -32,6 +32,8 @@ import Image from 'next/image';
 type LoginResponse = {
   access: string;
   refresh: string;
+  restaurant_id?: number;
+  restaurant_slug?: string;
 };
 
 type ApiErrorShape = {
@@ -45,6 +47,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [restaurantSlug, setRestaurantSlug] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -78,16 +81,25 @@ export default function LoginPage() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
+
+    // if (!restaurantSlug.trim()) {
+    //   setErr('Restaurant slug is required.');
+    //   return;
+    // }
+
     setLoading(true);
 
     try {
-      const { access, refresh } = (await loginUser({
+      const { access, refresh, restaurant_id, restaurant_slug } = (await loginUser({
         email,
         password,
-        // remember, // safe extra flag (ignore server-side if unused)
+        restaurant_slug: restaurantSlug.trim().toLowerCase(),
       })) as LoginResponse;
 
-      setTokens(access, refresh);
+      setTokens(access, refresh, {
+        restaurantId: restaurant_id,
+        restaurantSlug: restaurant_slug || restaurantSlug,
+      });
       router.push('/dashboard');
       toast.success('Successfully signed in!');
     } catch (error: unknown) {
@@ -288,6 +300,27 @@ export default function LoginPage() {
                   <div className='h-px flex-1 bg-border' />
                 </div>
                 <form onSubmit={onSubmit} className='space-y-5'>
+                  {/* Restaurant */}
+                  {/*<div className='space-y-2'>
+                    <Label htmlFor='restaurant-slug' className='text-sm font-semibold'>
+                      Restaurant slug
+                    </Label>
+                    <Input
+                      id='restaurant-slug'
+                      type='text'
+                      autoComplete='organization'
+                      placeholder='my-restaurant'
+                      value={restaurantSlug}
+                      onChange={(e) => setRestaurantSlug(e.target.value)}
+                      required
+                      disabled={loading}
+                      className='h-12 bg-background border-input'
+                    />
+                    <p className='text-xs text-muted-foreground'>
+                      Required when one email is used in multiple restaurants.
+                    </p>
+                  </div> */}
+
                   {/* Email */}
                   <div className='space-y-2'>
                     <Label htmlFor='email' className='text-sm font-semibold'>
@@ -379,7 +412,7 @@ export default function LoginPage() {
 
                   {/* Submit */}
                   <Button
-                    disabled={loading}
+                    disabled={loading || !email || !password } // || !restaurantSlug.trim()
                     data-testid='login-submit-button'
                     className={cn(
                       'h-12 w-full font-semibold text-base',

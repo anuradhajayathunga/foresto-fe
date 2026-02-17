@@ -18,7 +18,7 @@ import {
   Utensils,
   Sparkle,
   Sparkles,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface NavItem {
   title: string;
@@ -37,57 +37,57 @@ interface NavSection {
 
 export const NAV_DATA: NavSection[] = [
   {
-    label: '  ',
+    label: "  ",
     items: [
       {
-        title: 'Dashboard',
-        url: '/dashboard',
+        title: "Dashboard",
+        url: "/dashboard",
         icon: LayoutDashboard,
         items: [],
       },
     ],
   },
   {
-    label: 'MENU & KITCHEN',
+    label: "MENU & KITCHEN",
     items: [
       {
-        title: 'Menu Items',
-        url: '/menu',
+        title: "Menu Items",
+        url: "/menu",
         icon: Utensils,
         items: [],
       },
       {
-        title: 'Recipes',
-        url: '/recipes',
+        title: "Recipes",
+        url: "/recipes",
         icon: CookingPot,
         items: [],
       },
     ],
   },
   {
-    label: 'INVENTORY & SUPPLY',
+    label: "INVENTORY & SUPPLY",
     items: [
       {
-        title: 'Inventory',
-        url: '/inventory',
+        title: "Inventory",
+        url: "/inventory",
         icon: Package,
         items: [],
       },
       {
-        title: 'Purchases',
-        url: '/purchases',
+        title: "Purchases",
+        url: "/purchases",
         icon: ClipboardList,
         items: [],
       },
-      { title: 'Suppliers', url: '/suppliers', icon: Truck, items: [] },
+      { title: "Suppliers", url: "/suppliers", icon: Truck, items: [] },
     ],
   },
   {
-    label: 'Business',
+    label: "Business",
     items: [
       {
-        title: 'Sales (POS)',
-        url: '/sales',
+        title: "Sales (POS)",
+        url: "/sales",
         icon: Receipt,
         items: [],
       },
@@ -98,11 +98,18 @@ export const NAV_DATA: NavSection[] = [
       //   items: [],
       // },
       {
-        title: 'AI Forecasting',
-        url: '/forecasting',
+        title: "AI Forecasting",
+        url: "/forecasting",
         icon: Sparkles,
         items: [],
       },
+      {
+        title: "Team Users",
+        url: "/team",
+        icon: Users,
+        items: [],
+      },
+
       // {
       //   title: 'Staff & Users',
       //   icon: UserCog,
