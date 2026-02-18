@@ -67,7 +67,7 @@ export default function NewSalePage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchItems(undefined, undefined);
+        const data = await fetchItems();
         setItems(data);
       } catch (error) {
         console.error('Failed to load items:', error);
