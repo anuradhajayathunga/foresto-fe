@@ -1,4 +1,4 @@
-import { authFetch, unwrapList } from "@/lib/auth";
+import { authFetch, unwrapList } from '@/lib/auth';
 
 export type Category = {
   id: number;
@@ -10,7 +10,6 @@ export type Category = {
 export type MenuItem = {
   id: number;
   category: number;
-  category_name?: string;
   name: string;
   slug: string;
   description?: string;
@@ -21,7 +20,7 @@ export type MenuItem = {
 };
 
 export async function fetchCategories() {
-  const res = await authFetch("/api/menu/categories/?is_active=true");
+  const res = await authFetch('/api/menu/categories/?is_active=true');
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<Category>(data);
@@ -29,7 +28,7 @@ export async function fetchCategories() {
 
 export async function fetchItems(params?: Record<string, string>) {
   const qs = new URLSearchParams(params || {}).toString();
-  const res = await authFetch(`/api/menu/items/${qs ? `?${qs}` : ""}`);
+  const res = await authFetch(`/api/menu/items/${qs ? `?${qs}` : ''}`);
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<MenuItem>(data);
@@ -54,8 +53,8 @@ export type CreateMenuItemPayload = {
 };
 
 export async function createMenuItem(payload: CreateMenuItemPayload) {
-  const res = await authFetch("/api/menu/items/", {
-    method: "POST",
+  const res = await authFetch('/api/menu/items/', {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -63,12 +62,9 @@ export async function createMenuItem(payload: CreateMenuItemPayload) {
   return data as MenuItem;
 }
 
-export async function updateMenuItem(
-  id: number,
-  payload: Partial<CreateMenuItemPayload>,
-) {
+export async function updateMenuItem(id: number, payload: Partial<CreateMenuItemPayload>) {
   const res = await authFetch(`/api/menu/items/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -78,7 +74,7 @@ export async function updateMenuItem(
 
 export async function deleteMenuItem(id: number) {
   const res = await authFetch(`/api/menu/items/${id}/`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -93,8 +89,8 @@ export async function createCategory(payload: {
   sort_order?: number;
   is_active?: boolean;
 }) {
-  const res = await authFetch("/api/menu/categories/", {
-    method: "POST",
+  const res = await authFetch('/api/menu/categories/', {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));

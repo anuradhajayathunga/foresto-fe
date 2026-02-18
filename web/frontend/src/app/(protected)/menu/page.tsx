@@ -129,10 +129,10 @@ export default function MenuPage() {
     (async () => {
       setLoading(true);
       try {
-        const params: Record<string, string> = {};
-        if (selectedCategory) params.category = String(selectedCategory);
-        if (search.trim()) params.search = search.trim();
-        const data = await fetchItems(params);
+        const data = await fetchItems(
+          selectedCategory ?? undefined,
+          search.trim() || undefined
+        );
         setItems(data);
 
         const initialStock: Record<number, boolean> = {};
