@@ -114,7 +114,7 @@ export function DashboardKpiCards() {
         : 0;
     return {
       totalItems: total,
-      activeteMenuItems: items.filter((i) => i.is_available).length,
+      activeMenuItems: items.filter((i) => i.is_available).length,
       activeCategories: categories.length,
       avgPrice: avg,
     };
@@ -174,3 +174,4 @@ export function DashboardKpiCards() {
     </div>
   );
 }
+
