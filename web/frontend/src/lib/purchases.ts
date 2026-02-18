@@ -1,4 +1,4 @@
-import { authFetch } from "@/lib/auth";
+import { authFetch } from '@/lib/auth';
 
 export type Supplier = {
   id: number;
@@ -10,8 +10,8 @@ export type Supplier = {
 };
 export type PurchaseLineInput = {
   item: number;
-  qty: string;
-  unit_cost: string;
+  quantity: string;
+  unit_price: string;
 };
 export type PurchaseInvoice = {
   id: number;
@@ -37,15 +37,15 @@ export type PurchaseInvoice = {
 };
 
 export async function listSuppliers() {
-  const res = await authFetch("/api/purchases/suppliers/?ordering=name");
+  const res = await authFetch('/api/purchases/suppliers/?ordering=name');
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return data as Supplier[];
 }
 
 export async function createSupplier(payload: Partial<Supplier>) {
-  const res = await authFetch("/api/purchases/suppliers/", {
-    method: "POST",
+  const res = await authFetch('/api/purchases/suppliers/', {
+    method: 'POST',
     body: JSON.stringify({ ...payload, is_active: true }),
   });
   const data = await res.json().catch(() => ({}));
@@ -55,7 +55,7 @@ export async function createSupplier(payload: Partial<Supplier>) {
 
 export async function listPurchaseInvoices() {
   const res = await authFetch(
-    "/api/purchases/invoices/?ordering=-invoice_date",
+    '/api/purchases/invoices/?ordering=-invoice_date'
   );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
@@ -67,13 +67,13 @@ export async function createPurchaseInvoice(payload: {
   invoice_no?: string;
   invoice_date: string;
   discount?: string;
-  status?: "DRAFT" | "POSTED" | "VOID";
+  status?: 'DRAFT' | 'POSTED' | 'VOID';
   tax?: string;
   note?: string;
   lines: PurchaseLineInput[];
 }) {
-  const res = await authFetch("/api/purchases/invoices/", {
-    method: "POST",
+  const res = await authFetch('/api/purchases/invoices/', {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -91,15 +91,15 @@ export async function getPurchaseInvoice(id: string) {
 export async function exportPurchasesCsv(params: {
   from: string;
   to: string;
-  mode: "invoices" | "lines";
+  mode: 'invoices' | 'lines';
 }) {
   const qs = new URLSearchParams(params as any).toString();
   const res = await authFetch(`/api/purchases/invoices/export-csv/?${qs}`, {
-    method: "GET",
+    method: 'GET',
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => "Export failed");
+    const err = await res.text().catch(() => 'Export failed');
     throw new Error(err);
   }
 
@@ -109,8 +109,8 @@ export async function exportPurchasesCsv(params: {
 
 export async function voidPurchaseInvoice(id: string, reason?: string) {
   const res = await authFetch(`/api/purchases/invoices/${id}/void/`, {
-    method: "POST",
-    body: JSON.stringify({ reason: reason || "" }),
+    method: 'POST',
+    body: JSON.stringify({ reason: reason || '' }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
