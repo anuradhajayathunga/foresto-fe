@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from inventory.models import InventoryItem, StockMovement
 from .models import PurchaseInvoice, PurchaseLine, Supplier
+from core.tenant_utils import resolve_target_restaurant_for_request
 
 
 class SupplierSerializer(serializers.ModelSerializer):
@@ -67,6 +68,8 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
     tax = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, default=Decimal("0.00"))
     note = serializers.CharField(required=False, allow_blank=True)
     lines = PurchaseLineInSerializer(many=True)
+    restaurant_id = serializers.IntegerField(required=False, write_only=True)
+
 
     def validate_lines(self, lines):
         if not lines:
@@ -80,15 +83,16 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated):
-        user = self.context["request"].user
-        restaurant = getattr(user, "restaurant", None)
+        user = self.context["request"].user       
+        restaurant = resolve_target_restaurant_for_request(self.context["request"], validated)
+        target_restaurant_id = restaurant.id
         if not restaurant and not user.is_superuser:
             raise serializers.ValidationError({"detail": "User has no restaurant assigned."})
 
         supplier_id = validated["supplier"]
         supplier_qs = Supplier.objects.filter(pk=supplier_id)
         if not user.is_superuser:
-            supplier_qs = supplier_qs.filter(restaurant_id=user.restaurant_id)
+            supplier_qs = supplier_qs.filter(restaurant_id=target_restaurant_id)
         supplier = supplier_qs.first()
         if not supplier:
             raise serializers.ValidationError({"supplier": "Supplier not found in your restaurant."})
@@ -111,7 +115,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
         subtotal = Decimal("0.00")
 
         for idx, l in enumerate(validated["lines"]):
-            item_qs = InventoryItem.objects.select_for_update().filter(pk=l["item"])
+            item_qs =  InventoryItem.objects.select_for_update().filter(pk=l["item"], restaurant_id=target_restaurant_id,)
             if not user.is_superuser:
                 item_qs = item_qs.filter(restaurant_id=user.restaurant_id)
             item = item_qs.first()
@@ -125,6 +129,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
 
             PurchaseLine.objects.create(
                 invoice=invoice,
+                restaurant=restaurant,
                 item=item,
                 qty=qty,
                 unit_cost=unit_cost,
@@ -138,6 +143,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
 
             StockMovement.objects.create(
                 item=item,
+                restaurant=restaurant,
                 movement_type=StockMovement.Type.IN_,
                 quantity=qty,
                 reason="Purchase",
@@ -168,3 +174,4 @@ class PurchaseDraftFromForecastSerializer(serializers.Serializer):
     include_ok = serializers.BooleanField(required=False, default=False)
     invoice_date = serializers.DateField(required=False)
     note = serializers.CharField(required=False, allow_blank=True)
+    restaurant_id = serializers.IntegerField(required=False)

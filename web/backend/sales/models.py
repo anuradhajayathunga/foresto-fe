@@ -12,7 +12,7 @@ class Sale(models.Model):
     class Status(models.TextChoices):
         PAID = "PAID", "Paid"
         VOID = "VOID", "Void"
-        DRAF = "DRAF", "Draf"
+        DRAFT = "DRAFT", "Draft"
 
     restaurant = models.ForeignKey(
         "accounts.Restaurant",
@@ -27,7 +27,7 @@ class Sale(models.Model):
     )
 
     customer_name = models.CharField(max_length=120, blank=True)
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAF)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CASH)
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))

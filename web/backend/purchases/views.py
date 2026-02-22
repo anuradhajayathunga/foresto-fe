@@ -207,6 +207,7 @@ class PurchaseInvoiceViewSet(
 
             StockMovement.objects.create(
                 item=item,
+                restaurant=invoice.restaurant,
                 movement_type=StockMovement.Type.OUT,
                 quantity=line.qty,
                 reason="Purchase void",

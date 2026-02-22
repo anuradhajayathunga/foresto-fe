@@ -40,7 +40,7 @@ class SaleViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
         d = parse_date(request.query_params.get("date", "") or "")
         qs = self.get_queryset()
         if d:
-            qs = qs.filter(created_at__date=d)
+            qs = qs.filter(sold_at__date=d)
 
         agg = qs.aggregate(count=Count("id"), total=Sum("total"))
         return Response(
@@ -68,12 +68,12 @@ class SaleViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         qs = self.get_queryset().filter(
             status="PAID",
-            created_at__date__gte=start,
-            created_at__date__lte=today,
+            sold_at__date__gte=start,
+            sold_at__date__lte=today,
         )
 
         rows = (
-            qs.annotate(day=TruncDate("created_at"))
+            qs.annotate(day=TruncDate("sold_at"))
             .values("day")
             .annotate(total=Sum("total"), count=Count("id"))
             .order_by("day")
@@ -112,12 +112,12 @@ class SaleViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         qs = self.get_queryset().filter(
             status="PAID",
-            created_at__date__gte=start,
-            created_at__date__lte=today,
+            sold_at__date__gte=start,
+            sold_at__date__lte=today,
         )
 
         rows = (
-            qs.annotate(day=TruncDate("created_at"))
+            qs.annotate(day=TruncDate("sold_at"))
             .values("day")
             .annotate(total=Sum("total"), count=Count("id"))
             .order_by("day")
