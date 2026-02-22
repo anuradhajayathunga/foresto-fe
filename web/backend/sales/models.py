@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.db.models import Q
 
 class Sale(models.Model):
     class PaymentMethod(models.TextChoices):
@@ -40,12 +41,22 @@ class Sale(models.Model):
     inventory_deducted = models.BooleanField(default=False)
     
     sold_at = models.DateTimeField(default=timezone.now, db_index=True)
-    import_ref = models.CharField(max_length=120, unique=True, null=True, blank=True)
+    import_ref = models.CharField(max_length=120, null=True, blank=True, db_index=True)
 
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["restaurant", "created_at"])]
+        indexes = [
+            models.Index(fields=["restaurant", "created_at"]),
+            models.Index(fields=["restaurant", "sold_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["restaurant", "import_ref"],
+                condition=Q(import_ref__isnull=False) & ~Q(import_ref=""),
+                name="uniq_sale_import_ref_per_restaurant",
+            ),
+        ]
     def __str__(self):
         return f"Sale #{self.id} - {self.total}"
 
