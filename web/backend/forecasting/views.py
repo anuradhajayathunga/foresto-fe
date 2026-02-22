@@ -17,6 +17,11 @@ class DemandForecastView(APIView):
         top_n = int(request.query_params.get("top_n", "50"))
         top_n = max(1, min(top_n, 500))
 
+        try:
+            horizon = int(request.query_params.get("horizon_days", "7"))
+        except ValueError:
+            return Response({"detail": "horizon_days must be an integer."}, status=400)
+
         restaurant_id = None if request.user.is_superuser else getattr(request.user, "restaurant_id", None)
         if not request.user.is_superuser and not restaurant_id:
             return Response({"detail": "User has no restaurant assigned."}, status=400)
