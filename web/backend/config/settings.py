@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "purchases",
     "imports",
     "forecasting",
+    "kitchen",
 
 
 

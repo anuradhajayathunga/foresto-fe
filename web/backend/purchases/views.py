@@ -305,6 +305,7 @@ class PurchaseInvoiceViewSet(
             subtotal += line_total
 
             PurchaseLine.objects.create(
+                restaurant=invoice.restaurant,
                 invoice=invoice,
                 item_id=item_id,
                 qty=qty,
