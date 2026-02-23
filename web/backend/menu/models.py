@@ -1,9 +1,10 @@
 from django.db import models
 from decimal import Decimal
+from django.db.models import Q
 
 class Category(models.Model):
-    name = models.CharField(max_length=120, unique=True)
-    slug = models.SlugField(max_length=140, unique=True)
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140)
     sort_order = models.PositiveIntegerField(default=0)
     restaurant = models.ForeignKey(
         "accounts.Restaurant",
@@ -17,6 +18,10 @@ class Category(models.Model):
     class Meta:
         ordering = ["sort_order", "name"]
         indexes = [models.Index(fields=["restaurant", "slug"])]
+        constraints = [
+            models.UniqueConstraint(fields=["restaurant", "name"], name="uniq_category_name_per_restaurant"),
+            models.UniqueConstraint(fields=["restaurant", "slug"], name="uniq_category_slug_per_restaurant"),
+        ]
     def __str__(self):
         return self.name
 

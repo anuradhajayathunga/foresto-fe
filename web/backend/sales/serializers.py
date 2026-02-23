@@ -7,6 +7,7 @@ from rest_framework import serializers
 from inventory.models import InventoryItem, StockMovement
 from menu.models import MenuItem, RecipeLine
 from .models import Sale, SaleItem
+from core.tenant_utils import resolve_target_restaurant_for_request
 
 
 class SaleItemCreateSerializer(serializers.Serializer):
@@ -56,6 +57,7 @@ class SaleCreateSerializer(serializers.Serializer):
     tax = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, default=Decimal("0.00"))
     notes = serializers.CharField(required=False, allow_blank=True)
     items = SaleItemCreateSerializer(many=True)
+    restaurant_id = serializers.IntegerField(required=False, write_only=True) 
 
     def validate_items(self, items):
         if not items:
@@ -65,7 +67,7 @@ class SaleCreateSerializer(serializers.Serializer):
     @transaction.atomic
     def create(self, validated):
         user = self.context["request"].user
-        restaurant = getattr(user, "restaurant", None)
+        restaurant = resolve_target_restaurant_for_request(self.context["request"], validated) 
         if not restaurant and not user.is_superuser:
             raise serializers.ValidationError({"detail": "User has no restaurant assigned."})
 
@@ -111,6 +113,7 @@ class SaleCreateSerializer(serializers.Serializer):
             subtotal += line_total
 
             SaleItem.objects.create(
+                restaurant=restaurant,
                 sale=sale,
                 menu_item=menu_item,
                 name=name,
@@ -175,7 +178,7 @@ def deduct_inventory_for_sale(sale: Sale):
         sale.save(update_fields=["inventory_deducted"])
         return
 
-    inv_ids = list(required.keys())
+    inv_ids = sorted(required.keys())
     items = InventoryItem.objects.select_for_update().filter(
         id__in=inv_ids,
         restaurant_id=sale.restaurant_id,
@@ -200,6 +203,7 @@ def deduct_inventory_for_sale(sale: Sale):
         it.save(update_fields=["current_stock", "updated_at"])
 
         StockMovement.objects.create(
+            restaurant_id=sale.restaurant_id,
             item=it,
             movement_type="OUT",
             quantity=need,

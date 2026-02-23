@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 class InventoryItem(models.Model):
     class Unit(models.TextChoices):
@@ -11,7 +12,7 @@ class InventoryItem(models.Model):
         ML = "ML", "ml"
 
     name = models.CharField(max_length=180)
-    sku = models.CharField(max_length=60, unique=True)  # code like CHICKEN01
+    sku = models.CharField(max_length=60)  # code like CHICKEN01
     unit = models.CharField(max_length=5, choices=Unit.choices, default=Unit.PCS)
     restaurant = models.ForeignKey(
         "accounts.Restaurant",
@@ -32,6 +33,9 @@ class InventoryItem(models.Model):
     class Meta:
         ordering = ["name"]
         indexes = [models.Index(fields=["restaurant", "sku"])]
+        constraints = [
+            models.UniqueConstraint(fields=["restaurant", "sku"], name="uniq_inventory_sku_per_restaurant"),
+        ]
     def __str__(self):
         return f"{self.name} ({self.sku})"
 

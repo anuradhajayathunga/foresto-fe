@@ -92,6 +92,7 @@ class StockMovementCreateSerializer(serializers.Serializer):
 
         movement = StockMovement.objects.create(
             item=item,
+            restaurant=item.restaurant,
             movement_type=movement_type,
             quantity=qty,
             reason=validated_data.get("reason", ""),
