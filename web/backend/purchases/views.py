@@ -12,6 +12,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from core.mixins import RestaurantScopedQuerysetMixin
+from core.tenant_utils import resolve_target_restaurant_for_request
 from forecasting.services_ingredients import build_ingredient_plan
 from inventory.models import InventoryItem, StockMovement
 from inventory.permissions import IsStaff
@@ -173,9 +174,10 @@ class PurchaseInvoiceViewSet(
 
         # pass 1: validate stock won't go negative
         for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(pk=line.item_id)
-            if not request.user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=request.user.restaurant_id)
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=line.item_id,
+                restaurant_id=invoice.restaurant_id,
+            )
 
             item = item_qs.first()
             if not item:
@@ -195,9 +197,10 @@ class PurchaseInvoiceViewSet(
         # pass 2: apply reversal + movement
         user = request.user
         for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(pk=line.item_id)
-            if not user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=user.restaurant_id)
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=line.item_id,
+                restaurant_id=invoice.restaurant_id,
+            )
             item = item_qs.first()
             if not item:
                 raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
@@ -235,9 +238,9 @@ class PurchaseInvoiceViewSet(
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        supplier_qs = Supplier.objects.filter(pk=v["supplier"])
-        if not request.user.is_superuser:
-            supplier_qs = supplier_qs.filter(restaurant_id=request.user.restaurant_id)
+        restaurant = resolve_target_restaurant_for_request(request, v)
+
+        supplier_qs = Supplier.objects.filter(pk=v["supplier"], restaurant_id=restaurant.id)
         supplier = supplier_qs.first()
         if not supplier:
             raise ValidationError({"supplier": "Supplier not found in your restaurant."})
@@ -249,7 +252,7 @@ class PurchaseInvoiceViewSet(
         invoice_date = v.get("invoice_date") or timezone.localdate()
         note = (v.get("note") or "").strip()
 
-        restaurant_id = None if request.user.is_superuser else request.user.restaurant_id
+        restaurant_id = restaurant.id
         plan = build_ingredient_plan(
             horizon_days=horizon,
             top_n_items=top_n,
@@ -274,7 +277,7 @@ class PurchaseInvoiceViewSet(
             raise ValidationError({"detail": "No purchase needed (suggested_purchase_qty = 0 for all items)."})
 
         invoice = PurchaseInvoice.objects.create(
-            restaurant=request.user.restaurant,
+            restaurant=restaurant,
             supplier=supplier,
             invoice_no="",
             invoice_date=invoice_date,
@@ -291,7 +294,7 @@ class PurchaseInvoiceViewSet(
             i.id: i
             for i in InventoryItem.objects.filter(
                 id__in=[i for i, _ in draft_lines],
-                restaurant_id=request.user.restaurant_id,
+                restaurant_id=restaurant.id,
             )
         }
 

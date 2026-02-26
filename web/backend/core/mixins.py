@@ -1,5 +1,7 @@
 from django.core.exceptions import FieldError
 
+from core.tenant_utils import resolve_target_restaurant_for_request
+
 
 class RestaurantScopedQuerysetMixin:
     """
@@ -15,8 +17,14 @@ class RestaurantScopedQuerysetMixin:
         if not user or not user.is_authenticated:
             return qs.none()
 
-        # platform superuser can see all
+        # platform superuser can see all (optionally filter by ?restaurant_id=...)
         if user.is_superuser:
+            restaurant_id = self.request.query_params.get("restaurant_id")
+            if restaurant_id:
+                try:
+                    return qs.filter(**{f"{self.restaurant_lookup}_id": int(restaurant_id)})
+                except (ValueError, FieldError):
+                    return qs.none()
             return qs
 
         restaurant_id = getattr(user, "restaurant_id", None)
@@ -34,8 +42,9 @@ class RestaurantScopedQuerysetMixin:
         model = getattr(getattr(serializer, "Meta", None), "model", None)
 
         if model and any(f.name == "restaurant" for f in model._meta.fields):
-            if user and user.is_authenticated and getattr(user, "restaurant_id", None):
-                serializer.save(restaurant_id=user.restaurant_id)
+            if user and user.is_authenticated:
+                restaurant = resolve_target_restaurant_for_request(self.request, getattr(serializer, "validated_data", {}) or {})
+                serializer.save(restaurant=restaurant)
                 return
 
         serializer.save()

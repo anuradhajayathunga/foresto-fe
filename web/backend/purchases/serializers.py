@@ -90,9 +90,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "User has no restaurant assigned."})
 
         supplier_id = validated["supplier"]
-        supplier_qs = Supplier.objects.filter(pk=supplier_id)
-        if not user.is_superuser:
-            supplier_qs = supplier_qs.filter(restaurant_id=target_restaurant_id)
+        supplier_qs = Supplier.objects.filter(pk=supplier_id, restaurant_id=target_restaurant_id)
         supplier = supplier_qs.first()
         if not supplier:
             raise serializers.ValidationError({"supplier": "Supplier not found in your restaurant."})
@@ -115,9 +113,10 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
         subtotal = Decimal("0.00")
 
         for idx, l in enumerate(validated["lines"]):
-            item_qs =  InventoryItem.objects.select_for_update().filter(pk=l["item"], restaurant_id=target_restaurant_id,)
-            if not user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=user.restaurant_id)
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=l["item"],
+                restaurant_id=target_restaurant_id,
+            )
             item = item_qs.first()
             if not item:
                 raise serializers.ValidationError({"lines": f"Inventory item {l['item']} not found in your restaurant."})

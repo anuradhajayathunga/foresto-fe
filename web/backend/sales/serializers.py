@@ -92,9 +92,7 @@ class SaleCreateSerializer(serializers.Serializer):
             menu_item_id = it.get("menu_item")
 
             if menu_item_id:
-                mi_qs = MenuItem.objects.filter(id=menu_item_id)
-                if not user.is_superuser:
-                    mi_qs = mi_qs.filter(restaurant_id=user.restaurant_id)
+                mi_qs = MenuItem.objects.filter(id=menu_item_id, restaurant_id=restaurant.id)
                 mi = mi_qs.first()
                 if not mi:
                     raise serializers.ValidationError({"items": f"Menu item {menu_item_id} not found in your restaurant."})

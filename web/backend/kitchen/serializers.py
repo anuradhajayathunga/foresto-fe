@@ -2,6 +2,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from inventory.models import InventoryItem
+from core.tenant_utils import resolve_target_restaurant_for_request
 from kitchen.models import (
     MenuItemProduction, MenuItemWaste,
     KitchenPurchaseRequest, KitchenPurchaseRequestLine,
@@ -12,29 +13,12 @@ from menu.models import MenuItem
 class KitchenTenantMenuItemValidationMixin:
     def _get_target_restaurant(self):
         request = self.context.get("request")
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            raise serializers.ValidationError("Authentication required.")
-
-        # For your current system, regular users use assigned restaurant.
-        # If you later allow superuser write access, add restaurant_id resolver helper.
-        if user.is_superuser:
-            # Keep simple for now or add explicit restaurant_id support
-            if not getattr(user, "restaurant_id", None):
-                raise serializers.ValidationError("Superuser must provide restaurant context.")
-        if not getattr(user, "restaurant_id", None):
-            raise serializers.ValidationError("User has no restaurant assigned.")
-        return user.restaurant
+        return resolve_target_restaurant_for_request(request, getattr(self, "initial_data", None) or {})
 
     def validate_menu_item(self, menu_item: MenuItem):
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            raise serializers.ValidationError("Authentication required.")
-        if not getattr(user, "restaurant_id", None):
-            raise serializers.ValidationError("User has no restaurant assigned.")
-        if menu_item.restaurant_id != user.restaurant_id:
-            raise serializers.ValidationError("Selected menu item does not belong to your restaurant.")
+        restaurant = self._get_target_restaurant()
+        if menu_item.restaurant_id != restaurant.id:
+            raise serializers.ValidationError("Selected menu item does not belong to the selected restaurant.")
         return menu_item
 
 
@@ -57,7 +41,7 @@ class MenuItemWasteSerializer(KitchenTenantMenuItemValidationMixin, serializers.
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        validated_data["restaurant"] = self.context["request"].user.restaurant
+        validated_data["restaurant"] = self._get_target_restaurant()
         return super().create(validated_data)
 
 
@@ -70,7 +54,7 @@ class MenuItemWasteUpsertSerializer(KitchenTenantMenuItemValidationMixin, serial
 
     def create_or_update(self):
         data = self.validated_data
-        restaurant = self.context["request"].user.restaurant
+        restaurant = self._get_target_restaurant()
         obj, _ = MenuItemWaste.objects.update_or_create(
             restaurant=restaurant,
             date=data["date"],
@@ -84,7 +68,7 @@ class MenuItemWasteUpsertSerializer(KitchenTenantMenuItemValidationMixin, serial
         return obj
 
 
-class MenuItemProductionSerializer(serializers.ModelSerializer):
+class MenuItemProductionSerializer(KitchenTenantMenuItemValidationMixin, serializers.ModelSerializer):
     menu_item_name = serializers.CharField(source="menu_item.name", read_only=True)
     category_name = serializers.CharField(source="menu_item.category.name", read_only=True)
 
@@ -99,7 +83,7 @@ class MenuItemProductionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
-class MenuItemProductionUpsertSerializer(serializers.Serializer):
+class MenuItemProductionUpsertSerializer(KitchenTenantMenuItemValidationMixin, serializers.Serializer):
     date = serializers.DateField()
     menu_item = serializers.PrimaryKeyRelatedField(queryset=MenuItem.objects.all())
     planned_qty = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=0)
@@ -109,17 +93,14 @@ class MenuItemProductionUpsertSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True)
 
     def validate_menu_item(self, menu_item):
-        user = self.context["request"].user
-        if not getattr(user, "restaurant_id", None):
-            raise serializers.ValidationError("User has no restaurant assigned.")
-        if menu_item.restaurant_id != user.restaurant_id:
-            raise serializers.ValidationError("Menu item does not belong to your restaurant.")
+        restaurant = self._get_target_restaurant()
+        if menu_item.restaurant_id != restaurant.id:
+            raise serializers.ValidationError("Menu item does not belong to the selected restaurant.")
         return menu_item
 
     def create_or_update(self):
         data = self.validated_data
-        user = self.context["request"].user
-        restaurant = user.restaurant
+        restaurant = self._get_target_restaurant()
         obj, _ = MenuItemProduction.objects.update_or_create(
             restaurant=restaurant,
             date=data["date"],
@@ -192,7 +173,7 @@ class ProductionBulkUpsertRowSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True)
 
 
-class ProductionBulkUpsertSerializer(serializers.Serializer):
+class ProductionBulkUpsertSerializer(KitchenTenantMenuItemValidationMixin, serializers.Serializer):
     date = serializers.DateField()
     rows = ProductionBulkUpsertRowSerializer(many=True)
     return_alerts = serializers.BooleanField(default=True)
@@ -200,12 +181,8 @@ class ProductionBulkUpsertSerializer(serializers.Serializer):
     purchase_request_note = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
-        request = self.context["request"]
-        user = request.user
-        restaurant_id = getattr(user, "restaurant_id", None)
-
-        if not restaurant_id:
-            raise serializers.ValidationError("User has no restaurant assigned.")
+        restaurant = self._get_target_restaurant()
+        restaurant_id = restaurant.id
 
         rows = attrs.get("rows") or []
         if not rows:

@@ -78,7 +78,7 @@ class ImportCSVView(APIView):
             elif kind == "sales":
                 result = self.import_sales(reader, request, restaurant)
             else:
-                return Response({"detail": "Invalid kind. Use: categories | menu_items | ingredients | recipes"}, status=400)
+                return Response({"detail": "Invalid kind. Use: categories | menu_items | ingredients | recipes | sales"}, status=400)
 
             result["kind"] = kind
             result["dry_run"] = dry_run

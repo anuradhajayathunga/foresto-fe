@@ -1,12 +1,15 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import DecimalField, Sum, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.mixins import RestaurantScopedQuerysetMixin
+from core.tenant_utils import resolve_target_restaurant_for_request
 from kitchen.models import MenuItemProduction, MenuItemWaste, KitchenPurchaseRequest, KitchenPurchaseRequestLine
 from kitchen.serializers import (
     MenuItemProductionSerializer,
@@ -22,6 +25,8 @@ from kitchen.serializers import (
 from kitchen.services_forecasting import get_menu_item_suggestions_from_forecasting_app
 from kitchen.services_planning import build_low_stock_alerts_for_plan
 from menu.models import MenuItem
+from sales.models import SaleItem
+
 
 
 class KitchenBaseFiltersMixin:
@@ -39,7 +44,8 @@ class KitchenBaseFiltersMixin:
             qs = qs.filter(menu_item_id=menu_item_id)
         return qs
 
-class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
+
+class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MenuItemProductionSerializer
     queryset = (
@@ -48,15 +54,19 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
         .all()
     )
 
+    def get_queryset(self):
+        return self._apply_filters(super().get_queryset())
+
     @action(detail=False, methods=["post"], url_path="upsert")
     def upsert(self, request):
         s = MenuItemProductionUpsertSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
         obj = s.create_or_update()
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
 
         # Return alert for this plan row (planned qty)
         alerts = build_low_stock_alerts_for_plan(
-            restaurant_id=request.user.restaurant_id,
+            restaurant_id=restaurant.id,
             plan_rows=[{
                 "menu_item_id": obj.menu_item_id,
                 "planned_qty": obj.planned_qty,
@@ -69,16 +79,13 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
         })
     @action(detail=False, methods=["post"], url_path="forecast-suggest")
     def forecast_suggest(self, request):
-        s = ForecastSuggestSerializer(data=request.data)
+        s = ForecastSuggestSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
 
         target_date = s.validated_data["date"]
         save_to_production = s.validated_data["save_to_production"]
 
-        user = request.user
-        restaurant = getattr(user, "restaurant", None)
-        if not restaurant:
-            return Response({"detail": "User has no restaurant assigned."}, status=400)
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
 
         try:
             suggestions = get_menu_item_suggestions_from_forecasting_app(
@@ -146,8 +153,9 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
         s.is_valid(raise_exception=True)
 
         rows = s.validated_data["rows"]
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
         alert_data = build_low_stock_alerts_for_plan(
-            restaurant_id=request.user.restaurant_id,
+            restaurant_id=restaurant.id,
             plan_rows=rows,
         )
 
@@ -155,6 +163,7 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
         if s.validated_data.get("create_purchase_request") and alert_data["ingredient_alerts"]:
             created_request = self._create_purchase_request_from_alerts(
                 request=request,
+                restaurant=restaurant,
                 source_plan_date=s.validated_data.get("date"),
                 note=s.validated_data.get("note", ""),
                 alert_data=alert_data,
@@ -166,10 +175,10 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
         }
         return Response(resp)
 
-    def _create_purchase_request_from_alerts(self, request, source_plan_date, note, alert_data):
+    def _create_purchase_request_from_alerts(self, request, restaurant, source_plan_date, note, alert_data):
         with transaction.atomic():
             pr = KitchenPurchaseRequest.objects.create(
-                restaurant=request.user.restaurant,
+                restaurant=restaurant,
                 request_date=timezone.localdate(),
                 source_plan_date=source_plan_date,
                 note=note or "Auto-created from kitchen plan low-stock alerts",
@@ -179,7 +188,7 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
             from inventory.models import InventoryItem  # local import to avoid circular issues in some setups
             items_map = {
                 i.id: i for i in InventoryItem.objects.filter(
-                    restaurant=request.user.restaurant,
+                    restaurant=restaurant,
                     id__in=[a["item_id"] for a in alert_data["ingredient_alerts"]],
                 )
             }
@@ -190,7 +199,7 @@ class MenuItemProductionViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelVie
                     continue
                 KitchenPurchaseRequestLine.objects.create(
                     purchase_request=pr,
-                    restaurant=request.user.restaurant,
+                    restaurant=restaurant,
                     item=item,
                     required_qty=a["required_qty"],
                     current_stock=a["current_stock"],
@@ -238,10 +247,8 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
         Returns per-item waste + sold qty for a date/date range.
         Uses sales.SaleItem joined to Sale.sold_at and Sale.status=PAID.
         """
-        user = request.user
-        restaurant_id = getattr(user, "restaurant_id", None)
-        if not restaurant_id:
-            return Response({"detail": "User has no restaurant assigned."}, status=400)
+        restaurant = resolve_target_restaurant_for_request(request)
+        restaurant_id = restaurant.id
 
         qp = request.query_params
         date_from = qp.get("date_from")
@@ -314,7 +321,7 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        restaurant = request.user.restaurant
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
         date_val = v["date"]
         rows = v["rows"]
 
@@ -376,6 +383,7 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
                 if v.get("create_purchase_request") and alerts.get("ingredient_alerts"):
                     created_pr = self._create_purchase_request_from_alerts(
                         request=request,
+                        restaurant=restaurant,
                         source_plan_date=date_val,
                         note=v.get("purchase_request_note", ""),
                         alert_data=alerts,

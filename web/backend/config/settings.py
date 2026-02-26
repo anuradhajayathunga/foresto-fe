@@ -11,8 +11,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
-# ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
-ALLOWED_HOSTS = []  # set via env when deploying
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]"])
 
 
 INSTALLED_APPS = [
@@ -90,7 +89,7 @@ DATABASES = {
 # ✅ CORS (allow both localhost and 127.0.0.1 to avoid token mismatch)
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:3000"],
+    default=["http://localhost:3000", "http://127.0.0.1:3000"],
 )
 
 # If you later use cookies, you’ll need:
@@ -129,3 +128,5 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 FORECAST_MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
