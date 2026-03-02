@@ -6,6 +6,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from core.mixins import RestaurantScopedQuerysetMixin
@@ -25,6 +26,7 @@ from kitchen.serializers import (
 from kitchen.services_forecasting import get_menu_item_suggestions_from_forecasting_app
 from kitchen.services_planning import build_low_stock_alerts_for_plan
 from menu.models import MenuItem
+from purchases.serializers import PurchaseInvoiceOutSerializer
 from sales.models import SaleItem
 
 
@@ -61,6 +63,7 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
     def upsert(self, request):
         s = MenuItemProductionUpsertSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
+        v = s.validated_data
         obj = s.create_or_update()
         restaurant = resolve_target_restaurant_for_request(request, request.data)
 
@@ -73,9 +76,33 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
             }],
         )
 
+        created_request = None
+        purchase_invoice = None
+
+        if alerts.get("ingredient_alerts") and (v.get("create_purchase_request") or v.get("auto_create_purchase_draft")):
+            created_request = self._create_purchase_request_from_alerts(
+                request=request,
+                restaurant=restaurant,
+                source_plan_date=v.get("date"),
+                note=v.get("purchase_note", "") or v.get("note", ""),
+                alert_data=alerts,
+            )
+
+        if alerts.get("ingredient_alerts") and v.get("auto_create_purchase_draft"):
+            purchase_invoice = self._create_purchase_invoice_draft_from_request(
+                request=request,
+                purchase_request=created_request,
+                supplier_id=v["supplier"],
+                invoice_date=v.get("purchase_invoice_date"),
+                invoice_no=v.get("purchase_invoice_no", ""),
+                note=v.get("purchase_note", ""),
+            )
+
         return Response({
             "production": MenuItemProductionSerializer(obj, context={"request": request}).data,
             "low_stock_alerts": alerts,
+            "purchase_request": KitchenPurchaseRequestSerializer(created_request).data if created_request else None,
+            "purchase_invoice": PurchaseInvoiceOutSerializer(purchase_invoice, context={"request": request}).data if purchase_invoice else None,
         })
     @action(detail=False, methods=["post"], url_path="forecast-suggest")
     def forecast_suggest(self, request):
@@ -160,6 +187,7 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
         )
 
         created_request = None
+        purchase_invoice = None
         if s.validated_data.get("create_purchase_request") and alert_data["ingredient_alerts"]:
             created_request = self._create_purchase_request_from_alerts(
                 request=request,
@@ -169,9 +197,28 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
                 alert_data=alert_data,
             )
 
+        if s.validated_data.get("auto_create_purchase_draft") and alert_data["ingredient_alerts"]:
+            if not created_request:
+                created_request = self._create_purchase_request_from_alerts(
+                    request=request,
+                    restaurant=restaurant,
+                    source_plan_date=s.validated_data.get("date"),
+                    note=s.validated_data.get("note", ""),
+                    alert_data=alert_data,
+                )
+            purchase_invoice = self._create_purchase_invoice_draft_from_request(
+                request=request,
+                purchase_request=created_request,
+                supplier_id=s.validated_data["supplier"],
+                invoice_date=s.validated_data.get("purchase_invoice_date"),
+                invoice_no=s.validated_data.get("purchase_invoice_no", ""),
+                note=s.validated_data.get("note", ""),
+            )
+
         resp = {
             "alerts": alert_data,
             "purchase_request": KitchenPurchaseRequestSerializer(created_request).data if created_request else None,
+            "purchase_invoice": PurchaseInvoiceOutSerializer(purchase_invoice, context={"request": request}).data if purchase_invoice else None,
         }
         return Response(resp)
 
@@ -208,6 +255,74 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
                     reason="LOW_STOCK" if a["severity"] == "LOW" else "SHORTAGE",
                 )
         return pr
+
+    def _create_purchase_invoice_draft_from_request(self, request, purchase_request, supplier_id, invoice_date=None, invoice_no="", note=""):
+        from purchases.models import Supplier, PurchaseInvoice, PurchaseLine
+
+        supplier = Supplier.objects.filter(pk=supplier_id, restaurant_id=purchase_request.restaurant_id).first()
+        if not supplier:
+            raise ValidationError({"supplier": "Supplier not found in this restaurant."})
+
+        lines = list(purchase_request.lines.select_related("item").all())
+        draft_lines = []
+
+        for line in lines:
+            qty = Decimal(str(line.suggested_purchase_qty or 0)).quantize(Decimal("0.01"))
+            if qty <= 0:
+                continue
+            draft_lines.append((line.item, qty))
+
+        if not draft_lines:
+            return None
+
+        final_invoice_date = invoice_date or timezone.localdate()
+        extra_note = (note or "").strip()
+
+        with transaction.atomic():
+            invoice = PurchaseInvoice.objects.create(
+                restaurant=purchase_request.restaurant,
+                supplier=supplier,
+                invoice_no=(invoice_no or "").strip(),
+                invoice_date=final_invoice_date,
+                status=PurchaseInvoice.Status.DRAFT,
+                discount=Decimal("0.00"),
+                tax=Decimal("0.00"),
+                note=(
+                    f"Draft from KitchenPurchaseRequest #{purchase_request.id}"
+                    + (f" | plan_date={purchase_request.source_plan_date}" if purchase_request.source_plan_date else "")
+                    + (f" | {extra_note}" if extra_note else "")
+                ),
+                created_by=request.user,
+            )
+
+            subtotal = Decimal("0.00")
+            for idx, (item, qty) in enumerate(draft_lines):
+                unit_cost = Decimal(str(getattr(item, "cost_per_unit", Decimal("0.00")) or Decimal("0.00"))).quantize(Decimal("0.01"))
+                line_total = (qty * unit_cost).quantize(Decimal("0.01"))
+                subtotal += line_total
+
+                PurchaseLine.objects.create(
+                    invoice=invoice,
+                    restaurant=purchase_request.restaurant,
+                    item=item,
+                    qty=qty,
+                    unit_cost=unit_cost,
+                    line_total=line_total,
+                    sort_order=idx,
+                )
+
+            invoice.subtotal = subtotal.quantize(Decimal("0.01"))
+            invoice.total = invoice.subtotal
+            invoice.save(update_fields=["subtotal", "total"])
+
+            purchase_request.status = KitchenPurchaseRequest.Status.CONVERTED
+            if extra_note:
+                purchase_request.note = ((purchase_request.note or "").strip() + ("\n" if purchase_request.note else "") + f"Converted to PurchaseInvoice #{invoice.id}: {extra_note}")
+                purchase_request.save(update_fields=["status", "note"])
+            else:
+                purchase_request.save(update_fields=["status"])
+
+        return invoice
 
 class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -373,20 +488,37 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
 
             alerts = None
             created_pr = None
+            purchase_invoice = None
 
-            if v.get("return_alerts", True):
+            should_compute_alerts = (
+                v.get("return_alerts", True)
+                or v.get("create_purchase_request")
+                or v.get("auto_create_purchase_draft")
+            )
+
+            if should_compute_alerts:
                 alerts = build_low_stock_alerts_for_plan(
                     restaurant_id=restaurant.id,
                     plan_rows=plan_rows_for_alerts,
                 )
 
-                if v.get("create_purchase_request") and alerts.get("ingredient_alerts"):
+                if (v.get("create_purchase_request") or v.get("auto_create_purchase_draft")) and alerts.get("ingredient_alerts"):
                     created_pr = self._create_purchase_request_from_alerts(
                         request=request,
                         restaurant=restaurant,
                         source_plan_date=date_val,
-                        note=v.get("purchase_request_note", ""),
+                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
                         alert_data=alerts,
+                    )
+
+                if v.get("auto_create_purchase_draft") and alerts.get("ingredient_alerts"):
+                    purchase_invoice = self._create_purchase_invoice_draft_from_request(
+                        request=request,
+                        purchase_request=created_pr,
+                        supplier_id=v["supplier"],
+                        invoice_date=v.get("purchase_invoice_date"),
+                        invoice_no=v.get("purchase_invoice_no", ""),
+                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
                     )
 
         out = MenuItemProductionSerializer(saved, many=True, context={"request": request}).data
@@ -395,8 +527,9 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
                 "date": str(date_val),
                 "count": len(out),
                 "results": out,
-                "alerts": alerts,
+                "alerts": alerts if v.get("return_alerts", True) else None,
                 "purchase_request": KitchenPurchaseRequestSerializer(created_pr).data if created_pr else None,
+                "purchase_invoice": PurchaseInvoiceOutSerializer(purchase_invoice, context={"request": request}).data if purchase_invoice else None,
             },
             status=status.HTTP_200_OK,
         )

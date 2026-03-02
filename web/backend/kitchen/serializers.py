@@ -91,12 +91,23 @@ class MenuItemProductionUpsertSerializer(KitchenTenantMenuItemValidationMixin, s
     suggested_qty = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=0)
     suggestion_basis = serializers.CharField(required=False, allow_blank=True)
     note = serializers.CharField(required=False, allow_blank=True)
+    create_purchase_request = serializers.BooleanField(required=False, default=False)
+    auto_create_purchase_draft = serializers.BooleanField(required=False, default=False)
+    supplier = serializers.IntegerField(required=False)
+    purchase_invoice_date = serializers.DateField(required=False)
+    purchase_invoice_no = serializers.CharField(required=False, allow_blank=True)
+    purchase_note = serializers.CharField(required=False, allow_blank=True)
 
     def validate_menu_item(self, menu_item):
         restaurant = self._get_target_restaurant()
         if menu_item.restaurant_id != restaurant.id:
             raise serializers.ValidationError("Menu item does not belong to the selected restaurant.")
         return menu_item
+
+    def validate(self, attrs):
+        if attrs.get("auto_create_purchase_draft") and not attrs.get("supplier"):
+            raise serializers.ValidationError({"supplier": "supplier is required when auto_create_purchase_draft=true."})
+        return attrs
 
     def create_or_update(self):
         data = self.validated_data
@@ -137,6 +148,15 @@ class PlanAlertCheckSerializer(serializers.Serializer):
     rows = PlanRowSerializer(many=True)
     create_purchase_request = serializers.BooleanField(default=False)
     note = serializers.CharField(required=False, allow_blank=True)
+    auto_create_purchase_draft = serializers.BooleanField(required=False, default=False)
+    supplier = serializers.IntegerField(required=False)
+    purchase_invoice_date = serializers.DateField(required=False)
+    purchase_invoice_no = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if attrs.get("auto_create_purchase_draft") and not attrs.get("supplier"):
+            raise serializers.ValidationError({"supplier": "supplier is required when auto_create_purchase_draft=true."})
+        return attrs
 
 
 class KitchenPurchaseRequestLineSerializer(serializers.ModelSerializer):
@@ -179,6 +199,11 @@ class ProductionBulkUpsertSerializer(KitchenTenantMenuItemValidationMixin, seria
     return_alerts = serializers.BooleanField(default=True)
     create_purchase_request = serializers.BooleanField(default=False)
     purchase_request_note = serializers.CharField(required=False, allow_blank=True)
+    auto_create_purchase_draft = serializers.BooleanField(required=False, default=False)
+    supplier = serializers.IntegerField(required=False)
+    purchase_invoice_date = serializers.DateField(required=False)
+    purchase_invoice_no = serializers.CharField(required=False, allow_blank=True)
+    purchase_note = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
         restaurant = self._get_target_restaurant()
@@ -201,6 +226,9 @@ class ProductionBulkUpsertSerializer(KitchenTenantMenuItemValidationMixin, seria
         invalid = [mid for mid in menu_ids if mid not in valid_ids]
         if invalid:
             raise serializers.ValidationError({"rows": f"Menu items not in your restaurant: {invalid}"})
+
+        if attrs.get("auto_create_purchase_draft") and not attrs.get("supplier"):
+            raise serializers.ValidationError({"supplier": "supplier is required when auto_create_purchase_draft=true."})
 
         return attrs
 

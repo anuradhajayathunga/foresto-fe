@@ -8,11 +8,12 @@ from menu.models import RecipeLine
 def build_low_stock_alerts_for_plan(restaurant_id: int, plan_rows: list[dict]):
     """
     plan_rows: [{"menu_item_id": 1, "planned_qty": Decimal("10.00")}, ...]
-    Returns:
-      {
-        "ingredient_alerts": [...],
-        "summary": {...}
-      }
+        Returns:
+            {
+                "ingredient_alerts": [...],
+                "ingredient_availability": [...],
+                "summary": {...}
+            }
     """
     # Normalize / aggregate planned qty per menu item
     menu_plan = defaultdict(lambda: Decimal("0.00"))
@@ -23,7 +24,15 @@ def build_low_stock_alerts_for_plan(restaurant_id: int, plan_rows: list[dict]):
             menu_plan[mid] += qty
 
     if not menu_plan:
-        return {"ingredient_alerts": [], "summary": {"total_shortage_items": 0}}
+        return {
+            "ingredient_alerts": [],
+            "ingredient_availability": [],
+            "summary": {
+                "total_shortage_items": 0,
+                "total_ingredients": 0,
+                "fully_covered_ingredients": 0,
+            },
+        }
 
     recipe_lines = (
         RecipeLine.objects.filter(
@@ -56,6 +65,7 @@ def build_low_stock_alerts_for_plan(restaurant_id: int, plan_rows: list[dict]):
     }
 
     alerts = []
+    ingredient_availability = []
     for item_id, required_qty in ingredient_required.items():
         item = inv_items.get(item_id)
         if not item:
@@ -77,6 +87,18 @@ def build_low_stock_alerts_for_plan(restaurant_id: int, plan_rows: list[dict]):
         elif projected_remaining <= reorder_level:
             severity = "LOW"
 
+        ingredient_availability.append({
+            "item_id": item.id,
+            "item_name": item.name,
+            "unit": getattr(item, "unit", ""),
+            "required_qty": required_qty.quantize(Decimal("0.01")),
+            "current_stock": current_stock.quantize(Decimal("0.01")),
+            "available_for_plan": min(current_stock, required_qty).quantize(Decimal("0.01")),
+            "shortage_to_meet_plan": shortage_to_meet_plan.quantize(Decimal("0.01")),
+            "sufficient_for_plan": shortage_to_meet_plan <= 0,
+            "projected_remaining": projected_remaining.quantize(Decimal("0.01")),
+        })
+
         if severity != "OK":
             alerts.append({
                 "item_id": item.id,
@@ -92,11 +114,17 @@ def build_low_stock_alerts_for_plan(restaurant_id: int, plan_rows: list[dict]):
             })
 
     alerts.sort(key=lambda x: (x["severity"] != "CRITICAL", -float(x["suggested_purchase_qty"])))
+    ingredient_availability.sort(key=lambda x: x["item_name"].lower())
+
+    fully_covered_ingredients = sum(1 for row in ingredient_availability if row["sufficient_for_plan"])
     return {
         "ingredient_alerts": alerts,
+        "ingredient_availability": ingredient_availability,
         "summary": {
             "total_shortage_items": len(alerts),
             "critical_items": sum(1 for a in alerts if a["severity"] == "CRITICAL"),
             "low_items": sum(1 for a in alerts if a["severity"] == "LOW"),
+            "total_ingredients": len(ingredient_availability),
+            "fully_covered_ingredients": fully_covered_ingredients,
         },
     }
