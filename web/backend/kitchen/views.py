@@ -222,6 +222,110 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
         }
         return Response(resp)
 
+    @action(detail=False, methods=["post"], url_path="bulk-upsert")
+    def bulk_upsert(self, request):
+        s = ProductionBulkUpsertSerializer(data=request.data, context={"request": request})
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
+        date_val = v["date"]
+        rows = v["rows"]
+
+        menu_ids = [int(r["menu_item"]) for r in rows]
+        menu_map = {
+            m.id: m
+            for m in MenuItem.objects.filter(
+                id__in=menu_ids,
+                restaurant=restaurant,
+            ).select_related("category")
+        }
+
+        saved = []
+        plan_rows_for_alerts = []
+
+        with transaction.atomic():
+            for row in rows:
+                mid = int(row["menu_item"])
+                mi = menu_map.get(mid)
+                if not mi:
+                    continue  # validated already, just safety
+
+                defaults = {
+                    "planned_qty": row["planned_qty"],
+                }
+                if "prepared_qty" in row:
+                    defaults["prepared_qty"] = row["prepared_qty"]
+                if "suggested_qty" in row:
+                    defaults["suggested_qty"] = row["suggested_qty"]
+                if "suggestion_basis" in row:
+                    defaults["suggestion_basis"] = row.get("suggestion_basis", "")
+                if "note" in row:
+                    defaults["note"] = row.get("note", "")
+
+                obj, _ = MenuItemProduction.objects.update_or_create(
+                    restaurant=restaurant,
+                    date=date_val,
+                    menu_item=mi,
+                    defaults=defaults,
+                )
+                saved.append(obj)
+
+                plan_rows_for_alerts.append(
+                    {
+                        "menu_item_id": mi.id,
+                        "planned_qty": obj.planned_qty,
+                    }
+                )
+
+            alerts = None
+            created_pr = None
+            purchase_invoice = None
+
+            should_compute_alerts = (
+                v.get("return_alerts", True)
+                or v.get("create_purchase_request")
+                or v.get("auto_create_purchase_draft")
+            )
+
+            if should_compute_alerts:
+                alerts = build_low_stock_alerts_for_plan(
+                    restaurant_id=restaurant.id,
+                    plan_rows=plan_rows_for_alerts,
+                )
+
+                if (v.get("create_purchase_request") or v.get("auto_create_purchase_draft")) and alerts.get("ingredient_alerts"):
+                    created_pr = self._create_purchase_request_from_alerts(
+                        request=request,
+                        restaurant=restaurant,
+                        source_plan_date=date_val,
+                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
+                        alert_data=alerts,
+                    )
+
+                if v.get("auto_create_purchase_draft") and alerts.get("ingredient_alerts"):
+                    purchase_invoice = self._create_purchase_invoice_draft_from_request(
+                        request=request,
+                        purchase_request=created_pr,
+                        supplier_id=v["supplier"],
+                        invoice_date=v.get("purchase_invoice_date"),
+                        invoice_no=v.get("purchase_invoice_no", ""),
+                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
+                    )
+
+        out = MenuItemProductionSerializer(saved, many=True, context={"request": request}).data
+        return Response(
+            {
+                "date": str(date_val),
+                "count": len(out),
+                "results": out,
+                "alerts": alerts if v.get("return_alerts", True) else None,
+                "purchase_request": KitchenPurchaseRequestSerializer(created_pr).data if created_pr else None,
+                "purchase_invoice": PurchaseInvoiceOutSerializer(purchase_invoice, context={"request": request}).data if purchase_invoice else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     def _create_purchase_request_from_alerts(self, request, restaurant, source_plan_date, note, alert_data):
         with transaction.atomic():
             pr = KitchenPurchaseRequest.objects.create(
@@ -430,110 +534,6 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
         out.sort(key=lambda x: x["waste_qty"], reverse=True)
         return Response({"count": len(out), "results": out})
     
-    @action(detail=False, methods=["post"], url_path="bulk-upsert")
-    def bulk_upsert(self, request):
-        s = ProductionBulkUpsertSerializer(data=request.data, context={"request": request})
-        s.is_valid(raise_exception=True)
-        v = s.validated_data
-
-        restaurant = resolve_target_restaurant_for_request(request, request.data)
-        date_val = v["date"]
-        rows = v["rows"]
-
-        menu_ids = [int(r["menu_item"]) for r in rows]
-        menu_map = {
-            m.id: m
-            for m in MenuItem.objects.filter(
-                id__in=menu_ids,
-                restaurant=restaurant,
-            ).select_related("category")
-        }
-
-        saved = []
-        plan_rows_for_alerts = []
-
-        with transaction.atomic():
-            for row in rows:
-                mid = int(row["menu_item"])
-                mi = menu_map.get(mid)
-                if not mi:
-                    continue  # validated already, just safety
-
-                defaults = {
-                    "planned_qty": row["planned_qty"],
-                }
-                if "prepared_qty" in row:
-                    defaults["prepared_qty"] = row["prepared_qty"]
-                if "suggested_qty" in row:
-                    defaults["suggested_qty"] = row["suggested_qty"]
-                if "suggestion_basis" in row:
-                    defaults["suggestion_basis"] = row.get("suggestion_basis", "")
-                if "note" in row:
-                    defaults["note"] = row.get("note", "")
-
-                obj, _ = MenuItemProduction.objects.update_or_create(
-                    restaurant=restaurant,
-                    date=date_val,
-                    menu_item=mi,
-                    defaults=defaults,
-                )
-                saved.append(obj)
-
-                plan_rows_for_alerts.append(
-                    {
-                        "menu_item_id": mi.id,
-                        "planned_qty": obj.planned_qty,
-                    }
-                )
-
-            alerts = None
-            created_pr = None
-            purchase_invoice = None
-
-            should_compute_alerts = (
-                v.get("return_alerts", True)
-                or v.get("create_purchase_request")
-                or v.get("auto_create_purchase_draft")
-            )
-
-            if should_compute_alerts:
-                alerts = build_low_stock_alerts_for_plan(
-                    restaurant_id=restaurant.id,
-                    plan_rows=plan_rows_for_alerts,
-                )
-
-                if (v.get("create_purchase_request") or v.get("auto_create_purchase_draft")) and alerts.get("ingredient_alerts"):
-                    created_pr = self._create_purchase_request_from_alerts(
-                        request=request,
-                        restaurant=restaurant,
-                        source_plan_date=date_val,
-                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
-                        alert_data=alerts,
-                    )
-
-                if v.get("auto_create_purchase_draft") and alerts.get("ingredient_alerts"):
-                    purchase_invoice = self._create_purchase_invoice_draft_from_request(
-                        request=request,
-                        purchase_request=created_pr,
-                        supplier_id=v["supplier"],
-                        invoice_date=v.get("purchase_invoice_date"),
-                        invoice_no=v.get("purchase_invoice_no", ""),
-                        note=v.get("purchase_note", "") or v.get("purchase_request_note", ""),
-                    )
-
-        out = MenuItemProductionSerializer(saved, many=True, context={"request": request}).data
-        return Response(
-            {
-                "date": str(date_val),
-                "count": len(out),
-                "results": out,
-                "alerts": alerts if v.get("return_alerts", True) else None,
-                "purchase_request": KitchenPurchaseRequestSerializer(created_pr).data if created_pr else None,
-                "purchase_invoice": PurchaseInvoiceOutSerializer(purchase_invoice, context={"request": request}).data if purchase_invoice else None,
-            },
-            status=status.HTTP_200_OK,
-        )
-
 class KitchenPurchaseRequestViewSet(RestaurantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = KitchenPurchaseRequestSerializer
