@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework import serializers
 
-from inventory.models import InventoryItem, StockMovement
+from inventory.models import InventoryItem
 from .models import PurchaseInvoice, PurchaseLine, Supplier
 from core.tenant_utils import resolve_target_restaurant_for_request
 
@@ -107,7 +107,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
             tax=tax,
             note=validated.get("note", ""),
             created_by=user,
-            status=PurchaseInvoice.Status.POSTED,
+            status=PurchaseInvoice.Status.REQUEST,
         )
 
         subtotal = Decimal("0.00")
@@ -134,20 +134,6 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
                 unit_cost=unit_cost,
                 line_total=line_total,
                 sort_order=idx,
-            )
-
-            item.current_stock = (item.current_stock + qty).quantize(Decimal("0.01"))
-            item.cost_per_unit = unit_cost
-            item.save(update_fields=["current_stock", "cost_per_unit", "updated_at"])
-
-            StockMovement.objects.create(
-                item=item,
-                restaurant=restaurant,
-                movement_type=StockMovement.Type.IN_,
-                quantity=qty,
-                reason="Purchase",
-                note=f"PurchaseInvoice #{invoice.id}",
-                created_by=user,
             )
 
         total = (subtotal - discount + tax).quantize(Decimal("0.01"))

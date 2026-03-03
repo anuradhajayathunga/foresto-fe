@@ -160,6 +160,50 @@ class PurchaseInvoiceViewSet(
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
+    def confirm(self, request, pk=None):
+        invoice = self.get_object()
+
+        if invoice.status in [PurchaseInvoice.Status.CONFIRMED, PurchaseInvoice.Status.POSTED]:
+            raise ValidationError({"detail": "Invoice is already confirmed."})
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "VOID invoice cannot be confirmed."})
+        if invoice.status not in [PurchaseInvoice.Status.REQUEST, PurchaseInvoice.Status.DRAFT]:
+            raise ValidationError({"detail": f"Invoice in status {invoice.status} cannot be confirmed."})
+
+        lines = invoice.lines.select_related("item").all()
+        user = request.user
+
+        for line in lines:
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=line.item_id,
+                restaurant_id=invoice.restaurant_id,
+            )
+            item = item_qs.first()
+            if not item:
+                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+
+            item.current_stock = (item.current_stock + line.qty).quantize(Decimal("0.01"))
+            item.cost_per_unit = line.unit_cost
+            item.save(update_fields=["current_stock", "cost_per_unit", "updated_at"])
+
+            StockMovement.objects.create(
+                item=item,
+                restaurant=invoice.restaurant,
+                movement_type=StockMovement.Type.IN_,
+                quantity=line.qty,
+                reason="Purchase",
+                note=f"Confirm PurchaseInvoice #{invoice.id}",
+                created_by=user,
+            )
+
+        invoice.status = PurchaseInvoice.Status.CONFIRMED
+        invoice.save(update_fields=["status"])
+
+        out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
+        return Response(out.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
     def void(self, request, pk=None):
         invoice = self.get_object()
 
@@ -171,52 +215,55 @@ class PurchaseInvoiceViewSet(
         reason = (s.validated_data.get("reason") or "").strip()
 
         lines = invoice.lines.select_related("item").all()
+        should_reverse_stock = invoice.status in [PurchaseInvoice.Status.CONFIRMED, PurchaseInvoice.Status.POSTED]
 
-        # pass 1: validate stock won't go negative
-        for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(
-                pk=line.item_id,
-                restaurant_id=invoice.restaurant_id,
-            )
-
-            item = item_qs.first()
-            if not item:
-                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
-
-            new_stock = item.current_stock - line.qty
-            if new_stock < 0:
-                raise ValidationError(
-                    {
-                        "detail": (
-                            f"Cannot void: stock would go negative for {item.name} ({item.sku}). "
-                            f"Current={item.current_stock}, Need={line.qty}."
-                        )
-                    }
+        # pass 1: validate stock won't go negative (only when reversing stock)
+        if should_reverse_stock:
+            for line in lines:
+                item_qs = InventoryItem.objects.select_for_update().filter(
+                    pk=line.item_id,
+                    restaurant_id=invoice.restaurant_id,
                 )
 
-        # pass 2: apply reversal + movement
+                item = item_qs.first()
+                if not item:
+                    raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+
+                new_stock = item.current_stock - line.qty
+                if new_stock < 0:
+                    raise ValidationError(
+                        {
+                            "detail": (
+                                f"Cannot void: stock would go negative for {item.name} ({item.sku}). "
+                                f"Current={item.current_stock}, Need={line.qty}."
+                            )
+                        }
+                    )
+
+        # pass 2: apply reversal + movement (only when reversing stock)
         user = request.user
-        for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(
-                pk=line.item_id,
-                restaurant_id=invoice.restaurant_id,
-            )
-            item = item_qs.first()
-            if not item:
-                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+        if should_reverse_stock:
+            for line in lines:
+                item_qs = InventoryItem.objects.select_for_update().filter(
+                    pk=line.item_id,
+                    restaurant_id=invoice.restaurant_id,
+                )
+                item = item_qs.first()
+                if not item:
+                    raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
 
-            item.current_stock = (item.current_stock - line.qty).quantize(Decimal("0.01"))
-            item.save(update_fields=["current_stock", "updated_at"])
+                item.current_stock = (item.current_stock - line.qty).quantize(Decimal("0.01"))
+                item.save(update_fields=["current_stock", "updated_at"])
 
-            StockMovement.objects.create(
-                item=item,
-                restaurant=invoice.restaurant,
-                movement_type=StockMovement.Type.OUT,
-                quantity=line.qty,
-                reason="Purchase void",
-                note=f"Void PurchaseInvoice #{invoice.id}" + (f" — {reason}" if reason else ""),
-                created_by=user,
-            )
+                StockMovement.objects.create(
+                    item=item,
+                    restaurant=invoice.restaurant,
+                    movement_type=StockMovement.Type.OUT,
+                    quantity=line.qty,
+                    reason="Purchase void",
+                    note=f"Void PurchaseInvoice #{invoice.id}" + (f" — {reason}" if reason else ""),
+                    created_by=user,
+                )
 
         invoice.status = PurchaseInvoice.Status.VOID
         invoice.voided_at = timezone.now()
