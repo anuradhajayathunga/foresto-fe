@@ -17,6 +17,11 @@ from django.http import HttpResponse
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils import timezone
 from sales.models import Sale, SaleItem
+from sales.business_rules import (
+    aggregate_incoming_menu_qty,
+    get_prepared_limit_errors,
+    sync_auto_unsold_waste_for_date,
+)
 from core.tenant_utils import resolve_target_restaurant_for_request
 
 
@@ -378,26 +383,7 @@ class ImportCSVView(APIView):
                 discount = to_decimal(first.get("discount"), default="0.00")
                 tax = to_decimal(first.get("tax"), default="0.00")
 
-                # idempotent: same sale_ref updates instead of duplicates
-                sale, was_created = Sale.objects.update_or_create(
-                    restaurant=restaurant,
-                    import_ref=sale_ref,
-                    defaults={
-                        "restaurant": restaurant,
-                        "sold_at": sold_at,
-                        "payment_method": payment_method,
-                        "status": status_val,
-                        "customer_name": customer_name,
-                        "notes": notes,
-                        "discount": discount,
-                        "tax": tax,
-                        "created_by": request.user,
-                    },
-                )
-
-                if not was_created:
-                    SaleItem.objects.filter(sale=sale).delete()
-
+                parsed_lines = []
                 subtotal = Decimal("0.00")
 
                 for sort_order, (row_idx, row) in enumerate(rows):
@@ -432,16 +418,52 @@ class ImportCSVView(APIView):
                     line_total = (Decimal(qty) * Decimal(unit_price)).quantize(Decimal("0.01"))
                     subtotal += line_total
 
-                    SaleItem.objects.create(
-                        sale=sale,
-                        restaurant=restaurant,
-                        menu_item=menu_item,
-                        name=name,
-                        qty=qty,
-                        unit_price=unit_price,
-                        line_total=line_total,
-                        sort_order=sort_order,
+                    parsed_lines.append(
+                        {
+                            "sale": None,
+                            "restaurant": restaurant,
+                            "menu_item": menu_item,
+                            "name": name,
+                            "qty": qty,
+                            "unit_price": unit_price,
+                            "line_total": line_total,
+                            "sort_order": sort_order,
+                        }
                     )
+
+                if status_val == Sale.Status.PAID:
+                    incoming_qty = aggregate_incoming_menu_qty(parsed_lines)
+                    limit_errors = get_prepared_limit_errors(
+                        restaurant_id=restaurant.id,
+                        target_date=sold_at.date(),
+                        incoming_qty_by_menu=incoming_qty,
+                    )
+                    if limit_errors:
+                        raise ValueError("; ".join(limit_errors))
+
+                # idempotent: same sale_ref updates instead of duplicates
+                sale, was_created = Sale.objects.update_or_create(
+                    restaurant=restaurant,
+                    import_ref=sale_ref,
+                    defaults={
+                        "restaurant": restaurant,
+                        "sold_at": sold_at,
+                        "payment_method": payment_method,
+                        "status": status_val,
+                        "customer_name": customer_name,
+                        "notes": notes,
+                        "discount": discount,
+                        "tax": tax,
+                        "created_by": request.user,
+                    },
+                )
+
+                if not was_created:
+                    SaleItem.objects.filter(sale=sale).delete()
+
+                for line in parsed_lines:
+                    line["sale"] = sale
+                    SaleItem.objects.create(**line)
 
                 total = (subtotal - discount + tax).quantize(Decimal("0.01"))
                 if total < 0:
@@ -458,6 +480,13 @@ class ImportCSVView(APIView):
                 # Also mark it as NOT deducted (safe)
                 sale.inventory_deducted = False
                 sale.save()
+
+                if status_val == Sale.Status.PAID:
+                    sync_auto_unsold_waste_for_date(
+                        restaurant_id=restaurant.id,
+                        target_date=sold_at.date(),
+                        menu_item_ids=[int(mid) for mid in incoming_qty.keys()],
+                    )
 
                 created += 1 if was_created else 0
                 updated += 0 if was_created else 1

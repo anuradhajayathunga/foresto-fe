@@ -8,6 +8,7 @@ from kitchen.models import (
     KitchenPurchaseRequest, KitchenPurchaseRequestLine,
 )
 from menu.models import MenuItem
+from sales.business_rules import calculate_unsold_waste_qty
 
 
 class KitchenTenantMenuItemValidationMixin:
@@ -48,20 +49,33 @@ class MenuItemWasteSerializer(KitchenTenantMenuItemValidationMixin, serializers.
 class MenuItemWasteUpsertSerializer(KitchenTenantMenuItemValidationMixin, serializers.Serializer):
     date = serializers.DateField()
     menu_item = serializers.PrimaryKeyRelatedField(queryset=MenuItem.objects.all())
-    waste_qty = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    waste_qty = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False)
     reason = serializers.ChoiceField(choices=MenuItemWaste.Reason.choices, required=False, allow_blank=True)
     note = serializers.CharField(required=False, allow_blank=True)
 
     def create_or_update(self):
         data = self.validated_data
         restaurant = self._get_target_restaurant()
+
+        waste_qty = data.get("waste_qty")
+        if waste_qty is None:
+            waste_qty = calculate_unsold_waste_qty(
+                restaurant_id=restaurant.id,
+                target_date=data["date"],
+                menu_item_id=data["menu_item"].id,
+            )
+
+        reason = data.get("reason") or ""
+        if not reason and data.get("waste_qty") is None:
+            reason = MenuItemWaste.Reason.UNSOLD
+
         obj, _ = MenuItemWaste.objects.update_or_create(
             restaurant=restaurant,
             date=data["date"],
             menu_item=data["menu_item"],
             defaults={
-                "waste_qty": data["waste_qty"],
-                "reason": data.get("reason", ""),
+                "waste_qty": waste_qty,
+                "reason": reason,
                 "note": data.get("note", ""),
             },
         )
