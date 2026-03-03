@@ -57,6 +57,12 @@ export const NAV_DATA: NavSection[] = [
         items: [],
       },
       {
+        title: "Kitchen",
+        url: "/kitchen",
+        icon: ChefHat,
+        items: [],
+      },
+      {
         title: "Recipes",
         url: "/recipes",
         icon: CookingPot,
