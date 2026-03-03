@@ -13,5 +13,7 @@ export type RestaurantDetails = {
 // optional alias call
 export async function getMyRestaurantAlias(): Promise<RestaurantDetails> {
   const response = await authFetch('/api/auth/my-restaurants/');
-  return response.json();
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw data;
+  return data as RestaurantDetails;
 }

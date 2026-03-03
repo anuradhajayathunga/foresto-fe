@@ -2,13 +2,24 @@ import { authFetch, unwrapList } from "@/lib/auth";
 
 export type Sale = {
   id: number;
-  menu_item: number;
-  menu_item_name?: string;
-  quantity: string;
-  unit_price?: string;
-  total_amount?: string;
+  restaurant?: number;
+  customer_name?: string;
+  subtotal?: string;
+  discount?: string;
+  tax?: string;
+  total: string;
+  items?: Array<{
+    id: number;
+    menu_item?: number | null;
+    menu_item_name?: string | null;
+    name: string;
+    qty: number | string;
+    unit_price?: string;
+    line_total?: string;
+  }>;
   sold_at?: string;
-  status?: "PENDING" | "CONFIRMED" | "CANCELLED";
+  payment_method: "CASH" | "CARD" | "ONLINE";
+  status: "PAID" | "VOID" | "DRAFT";
   created_at?: string;
 };
 
@@ -36,7 +47,7 @@ export async function listSales() {
   const res = await authFetch('/api/sales/sales/?ordering=-created_at');
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
-  return data as any[];
+  return unwrapList<Sale>(data);
 }
 
 export async function getSale(id: string) {

@@ -1,4 +1,4 @@
-import { authFetch } from "@/lib/auth";
+import { authFetch, unwrapList } from "@/lib/auth";
 
 export type Supplier = {
   id: number;
@@ -40,7 +40,7 @@ export async function listSuppliers() {
   const res = await authFetch("/api/purchases/suppliers/?ordering=name");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
-  return data as Supplier[];
+  return unwrapList<Supplier>(data);
 }
 
 export async function createSupplier(payload: Partial<Supplier>) {
@@ -59,7 +59,7 @@ export async function listPurchaseInvoices() {
   );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
-  return data as PurchaseInvoice[];
+  return unwrapList<PurchaseInvoice>(data);
 }
 
 export async function createPurchaseInvoice(payload: {
@@ -67,7 +67,7 @@ export async function createPurchaseInvoice(payload: {
   invoice_no?: string;
   invoice_date: string;
   discount?: string;
-  status?: "DRAFT" | "POSTED" | "VOID";
+  status?: "DRAFT" | "REQUEST" | "CONFIRMED" | "POSTED" | "VOID";
   tax?: string;
   note?: string;
   lines: PurchaseLineInput[];
