@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   getIngredientPlan,
   getForecastHistory,
+  getDemandForecast,
   type IngredientPlan,
+  type DemandForecastResponse
 } from '@/lib/forecasting';
 import {
   createPurchaseDraftFromForecast,
@@ -137,6 +139,12 @@ export default function UnifiedForecastPage() {
   const [note, setNote] = useState<string>('');
   const [creating, setCreating] = useState(false);
 
+  const [demand, setDemand] = useState<DemandForecastResponse | null>(null);
+  const [horizon, setHorizon] = useState<string>("7");
+  const [topN, setTopN] = useState<string>("50");
+  const [demandLoading, setDemandLoading] = useState(false);
+  const [demandError, setDemandError] = useState<string | null>(null);
+
   // --- LOAD DATA ---
   async function loadAll() {
     setLoading(true);
@@ -166,6 +174,22 @@ export default function UnifiedForecastPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope]);
+
+
+  useEffect(() => {
+    (async () => {
+      setDemandLoading(true);
+      setDemandError(null);
+      try {
+        const d = await getDemandForecast(Number(horizon), Number(topN));
+        setDemand(d);
+      } catch (e: any) {
+        setDemandError(e?.detail || "Failed to load demand forecast.");
+      } finally {
+        setDemandLoading(false);
+      }
+    })();
+  }, [horizon, topN]);
 
   // --- MEMOS ---
   const chartDisplayData = useMemo(() => {
@@ -784,6 +808,99 @@ export default function UnifiedForecastPage() {
                     {loading
                       ? 'Loading data...'
                       : 'No ingredients found for this plan.'}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+            {/* Menu item demand table */}
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-base">Menu Item Demand</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Predicted demand from {demand?.start_date || "-"} for {demand?.horizon_days || Number(horizon)} day(s)
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="w-[120px]">
+              <Select value={horizon} onValueChange={setHorizon}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Horizon" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-[120px]">
+              <Select value={topN} onValueChange={setTopN}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Top N" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">Top 10</SelectItem>
+                  <SelectItem value="25">Top 25</SelectItem>
+                  <SelectItem value="50">Top 50</SelectItem>
+                  <SelectItem value="100">Top 100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0 border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Tomorrow</TableHead>
+                <TableHead className="text-right">Next 7 Days Total</TableHead>
+                <TableHead className="text-right">Avg / Day</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {demandLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                    Loading demand forecast...
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!demandLoading && demandError && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-sm text-destructive">
+                    {demandError}
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!demandLoading && !demandError && demand?.items?.map((item) => (
+                <TableRow key={item.menu_item_id}>
+                  <TableCell className="font-medium">{item.menu_item_name}</TableCell>
+                  <TableCell className="text-right">{item.tomorrow}</TableCell>
+                  <TableCell className="text-right">{item.next_7_days_total}</TableCell>
+                  <TableCell className="text-right">
+                    {demand.horizon_days > 0
+                      ? (item.next_7_days_total / demand.horizon_days).toFixed(1)
+                      : "0.0"}
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {!demandLoading && !demandError && !demand?.items?.length && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                    No demand forecast data available.
                   </TableCell>
                 </TableRow>
               )}
