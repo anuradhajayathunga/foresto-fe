@@ -870,7 +870,7 @@ export default function KitchenPage() {
       </div>
 
       {/* 2. Notifications */}
-      {(err || success) && (
+      {/* {(err || success) && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${
             err
@@ -885,11 +885,11 @@ export default function KitchenPage() {
           )}
           <span className="font-medium">{err || success}</span>
         </div>
-      )}
+      )} */}
 
       {/* 3. KPI / Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-l-4 border-l-blue-500 shadow-sm">
+        <Card className="border-l-4 border-l-orange-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Production
@@ -941,7 +941,7 @@ export default function KitchenPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500 shadow-sm">
+        <Card className="border-l-4 border-l-orange-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Pending Requests
@@ -1106,7 +1106,7 @@ export default function KitchenPage() {
                     <Input
                       value={plannedQty}
                       type="number"
-                      min="0"
+                      min="1"
                       step="0.5"
                       onChange={(e) => setPlannedQty(e.target.value)}
                     />
@@ -1344,7 +1344,7 @@ export default function KitchenPage() {
             {/* Right: Data & Forecast */}
             <div className="lg:col-span-3 space-y-6">
               {/* Forecast Banner */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900 rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900 rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 text-blue-700 rounded-full">
                     <TrendingUp className="h-5 w-5" />
@@ -1362,7 +1362,7 @@ export default function KitchenPage() {
                 <div className="flex items-center gap-2">
                   <Input
                     type="date"
-                    className="h-8 w-36 bg-white"
+                    className="h-8 w-36"
                     value={forecastDate}
                     onChange={(e) => setForecastDate(e.target.value)}
                   />
@@ -1376,7 +1376,7 @@ export default function KitchenPage() {
                     Run Forecast
                   </Button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Table Card */}
               <Card className="shadow-sm">
@@ -2211,33 +2211,7 @@ export default function KitchenPage() {
             </Card>
 
             {/* Waste Data & Analytics (Right Column) */}
-            <div className="lg:col-span-12 space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-muted/20 border-dashed">
-                  <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground">
-                      Total Waste
-                    </span>
-                    <span className="text-xl font-bold mt-1">
-                      {fmtQty(wasteSummary?.total_waste)}
-                    </span>
-                  </CardContent>
-                </Card>
-                {(wasteSummary?.by_reason || []).map((r) => (
-                  <Card key={r.reason} className="bg-white">
-                    <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                      <span className="text-xs font-semibold uppercase text-muted-foreground">
-                        {r.reason}
-                      </span>
-                      <span className="text-xl font-bold mt-1">
-                        {fmtQty(r.total_waste)}
-                      </span>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
+            <div className="lg:col-span-7 space-y-6">
               <Card>
                 <CardHeader className="py-4 flex flex-row items-center justify-between">
                   <CardTitle className="text-base">Waste Log</CardTitle>
@@ -2289,9 +2263,10 @@ export default function KitchenPage() {
                   </Table>
                 </CardContent>
               </Card>
-
+            </div>
+            <div className="lg:col-span-5 space-y-6">
               {/* Analytics Toggle Section */}
-              <div className="border rounded-lg bg-white p-4">
+              <div className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-semibold text-sm">
@@ -2348,6 +2323,31 @@ export default function KitchenPage() {
                     </TableBody>
                   </Table>
                 )}
+              </div>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                <Card className="bg-muted/20 border-dashed">
+                  <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">
+                      Total Waste
+                    </span>
+                    <span className="text-xl font-bold mt-1">
+                      {fmtQty(wasteSummary?.total_waste)}
+                    </span>
+                  </CardContent>
+                </Card>
+                {(wasteSummary?.by_reason || []).map((r) => (
+                  <Card key={r.reason} className="">
+                    <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground">
+                        {r.reason}
+                      </span>
+                      <span className="text-xl font-bold mt-1">
+                        {fmtQty(r.total_waste)}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
           </div>
