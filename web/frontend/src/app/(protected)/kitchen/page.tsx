@@ -1094,7 +1094,7 @@ export default function KitchenPage() {
                       value={suggestedQty}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.5"
                       onChange={(e) => setSuggestedQty(e.target.value)}
                       readOnly
                     />
@@ -1107,7 +1107,7 @@ export default function KitchenPage() {
                       value={plannedQty}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.5"
                       onChange={(e) => setPlannedQty(e.target.value)}
                     />
                   </div>
@@ -1119,7 +1119,7 @@ export default function KitchenPage() {
                       value={preparedQty}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.5"
                       onChange={(e) => setPreparedQty(e.target.value)}
                     />
                   </div>
@@ -1137,7 +1137,7 @@ export default function KitchenPage() {
                   />
                 </div>
 
-                <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                {/* <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -1307,7 +1307,7 @@ export default function KitchenPage() {
                       Create Draft Purchase
                     </Button>
                   </div>
-                </div>
+                </div> */}
               </CardContent>
               <CardFooter className="flex flex-col gap-2 bg-muted/10 border-t pt-4">
                 <Button
@@ -1320,15 +1320,15 @@ export default function KitchenPage() {
                   )}
                   {selectedProductionId ? "Update Entry" : "Add Entry"}
                 </Button>
-                <div className="grid grid-cols-2 gap-2 w-full">
-                  <Button
+                <div className="grid grid-cols-1 gap-2 w-full">
+                  {/* <Button
                     variant="outline"
                     size="sm"
                     onClick={handleCheckSinglePlanAlert}
                     disabled={saving}
                   >
                     Check Alerts
-                  </Button>
+                  </Button> */}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1394,7 +1394,7 @@ export default function KitchenPage() {
                         <TableHead className="text-center">
                           Stock Alerts
                         </TableHead>
-                        <TableHead className="text-center">Action</TableHead>
+                        {/* <TableHead className="text-center">Action</TableHead> */}
                         <TableHead className="text-right">Suggested</TableHead>
                         <TableHead className="text-right">Planned</TableHead>
                         <TableHead className="text-right">Prepared</TableHead>
@@ -1425,10 +1425,10 @@ export default function KitchenPage() {
                                     variant="outline"
                                     className="bg-amber-50 text-amber-700 border-amber-200"
                                     onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenRowAlertSheet(row);
-                              }}
-                              // disabled={rowAlertLoadingId === row.id}
+                                      e.stopPropagation();
+                                      handleOpenRowAlertSheet(row);
+                                    }}
+                                    // disabled={rowAlertLoadingId === row.id}
                                   >
                                     {productionAlertCounts[row.id]} Issues
                                   </Badge>
@@ -1439,7 +1439,7 @@ export default function KitchenPage() {
                             )}
                           </TableCell>
 
-                          <TableCell className="text-center py-2">
+                          {/* <TableCell className="text-center py-2">
                             <Button
                               type="button"
                               size="sm"
@@ -1457,7 +1457,7 @@ export default function KitchenPage() {
                                 <>Alert</>
                               )}
                             </Button>
-                          </TableCell>
+                          </TableCell> */}
 
                           <TableCell className="text-right text-muted-foreground">
                             {fmtQty(row.suggested_qty)}
@@ -1728,7 +1728,7 @@ export default function KitchenPage() {
                                   <Input
                                     type="number"
                                     min="0"
-                                    step="0.01"
+                                    step="0.5"
                                     className="h-8 text-right"
                                     value={
                                       rowAlertBuyQty[alert.item_id] ??
@@ -1931,6 +1931,9 @@ export default function KitchenPage() {
                                 Stock
                               </TableHead>
                               <TableHead className="h-8 text-xs text-right">
+                                Suggested Qty
+                              </TableHead>
+                              <TableHead className="h-8 text-xs text-right">
                                 Buy Qty
                               </TableHead>
                             </TableRow>
@@ -1976,11 +1979,14 @@ export default function KitchenPage() {
                                   <TableCell className="text-xs text-right">
                                     {fmtQty(alert.current_stock)}
                                   </TableCell>
+                                  <TableCell className="text-xs text-right">
+                                    {fmtQty(alert.suggested_purchase_qty)}
+                                  </TableCell>
                                   <TableCell className="text-xs text-right w-[120px]">
                                     <Input
                                       type="number"
                                       min="0"
-                                      step="0.01"
+                                      step="0.5"
                                       className="h-8 text-right font-medium text-emerald-700"
                                       value={
                                         rowAlertBuyQty[alert.item_id] ??
@@ -2011,16 +2017,16 @@ export default function KitchenPage() {
 
                   {/* Actions */}
                   <div className="pt-4 border-t flex justify-end gap-3 mt-4">
-                    <Button
+                    {/* <Button
                       type="button"
                       variant="outline"
                       onClick={() => setProductionAlertSheetOpen(false)}
                     >
                       Cancel
-                    </Button>
+                    </Button> */}
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="outline"
                       onClick={handleCreatePurchaseRequestFromAlertSheet}
                       disabled={
                         saving ||
@@ -2158,7 +2164,7 @@ export default function KitchenPage() {
                       value={wasteQty}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.5"
                       onChange={(e) => setWasteQty(e.target.value)}
                       placeholder="Auto"
                     />
