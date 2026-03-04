@@ -70,6 +70,9 @@ import {
   TrendingUp,
   FileText,
   ArrowRight,
+  ArrowLeftRight,
+  Plus,
+  X,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -125,6 +128,8 @@ export default function KitchenPage() {
   const [selectedProductionId, setSelectedProductionId] = useState<
     number | null
   >(null);
+  const [productionFormOpen, setProductionFormOpen] = useState(false);
+  const [productionFormSide, setProductionFormSide] = useState<"left" | "right">("right");
 
   // Forecast State
   const [forecastDate, setForecastDate] = useState<string>(() => tomorrowISO());
@@ -307,6 +312,13 @@ export default function KitchenPage() {
   }, [wastes]);
 
   // --- Handlers ---
+  function openNewProductionForm() {
+    resetProductionForm();
+    setErr(null);
+    setSuccess(null);
+    setProductionFormOpen(true);
+  }
+
   async function handleSaveProduction() {
     if (!prodMenuItem) return;
     setSaving(true);
@@ -327,6 +339,7 @@ export default function KitchenPage() {
       }));
       setSuccess("Production row saved.");
       setSelectedProductionId(null);
+      setProductionFormOpen(false);
       await loadKitchenData();
     } catch (e: any) {
       setErr(parseError(e));
@@ -337,6 +350,7 @@ export default function KitchenPage() {
 
   function handleSelectProductionRow(row: KitchenProduction) {
     setSelectedProductionId(row.id);
+    setProductionFormOpen(true);
     setProdDate(row.date || todayISO());
     setProdMenuItem(String(row.menu_item));
     setPlannedQty(String(row.planned_qty ?? "0"));
@@ -771,10 +785,56 @@ export default function KitchenPage() {
           value="production"
           className="space-y-6 animate-in fade-in slide-in-from-bottom-2"
         >
+          <div className="flex justify-end">
+            <Button onClick={openNewProductionForm} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Production
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {productionFormOpen && (
+              <button
+                type="button"
+                aria-label="Close production form"
+                className="fixed inset-0 z-40 bg-black/40"
+                onClick={() => setProductionFormOpen(false)}
+              />
+            )}
+
             {/* Left: Input Form */}
-            <Card className="lg:col-span-1 h-fit shadow-md border-muted/60">
+            <Card
+              className={`fixed top-0 z-50 h-screen w-full max-w-xl overflow-y-auto rounded-none shadow-xl border-muted/60 transition-transform duration-300 ${
+                productionFormSide === "right"
+                  ? `right-0 border-l ${productionFormOpen ? "translate-x-0" : "translate-x-full"}`
+                  : `left-0 border-r ${productionFormOpen ? "translate-x-0" : "-translate-x-full"}`
+              }`}
+            >
               <CardHeader className="bg-muted/20 border-b pb-4">
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setProductionFormSide((prev) =>
+                        prev === "right" ? "left" : "right",
+                      )
+                    }
+                    title="Move form left/right"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setProductionFormOpen(false)}
+                    title="Close form"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
                 <CardTitle className="text-base font-semibold">
                   {selectedProductionId ? "Edit Production" : "New Production"}
                 </CardTitle>
@@ -1062,7 +1122,7 @@ export default function KitchenPage() {
             </Card>
 
             {/* Right: Data & Forecast */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 space-y-6">
               {/* Forecast Banner */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900 rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
