@@ -14,6 +14,7 @@ import {
   listSuppliers,
   type Supplier,
 } from '@/lib/purchases';
+import { bulkUpsertProductions } from '@/lib/kitchen';
 
 // UI Components
 import {
@@ -43,6 +44,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -78,6 +80,15 @@ import Link from 'next/link';
 // --- UTILS ---
 function todayISO() {
   const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function tomorrowISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -144,6 +155,12 @@ export default function UnifiedForecastPage() {
   const [topN, setTopN] = useState<string>("50");
   const [demandLoading, setDemandLoading] = useState(false);
   const [demandError, setDemandError] = useState<string | null>(null);
+  const [selectedDemandItemIds, setSelectedDemandItemIds] = useState<number[]>([]);
+  const [plannedQtyByItemId, setPlannedQtyByItemId] = useState<Record<number, string>>({});
+  const [sendingToKitchen, setSendingToKitchen] = useState(false);
+  const [kitchenMsg, setKitchenMsg] = useState<string | null>(null);
+  const [kitchenErr, setKitchenErr] = useState<string | null>(null);
+  const productionDate = tomorrowISO();
 
   // --- LOAD DATA ---
   async function loadAll() {
@@ -190,6 +207,24 @@ export default function UnifiedForecastPage() {
       }
     })();
   }, [horizon, topN]);
+
+  useEffect(() => {
+    if (!demand?.items?.length) {
+      setSelectedDemandItemIds([]);
+      setPlannedQtyByItemId({});
+      return;
+    }
+
+    setPlannedQtyByItemId((prev) => {
+      const next: Record<number, string> = { ...prev };
+      for (const item of demand.items) {
+        if (next[item.menu_item_id] === undefined) {
+          next[item.menu_item_id] = String(item.tomorrow ?? 0);
+        }
+      }
+      return next;
+    });
+  }, [demand]);
 
   // --- MEMOS ---
   const chartDisplayData = useMemo(() => {
@@ -254,6 +289,79 @@ export default function UnifiedForecastPage() {
     const element = document.getElementById('full-view');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function toggleDemandSelection(menuItemId: number, checked: boolean) {
+    setSelectedDemandItemIds((prev) => {
+      if (checked) {
+        if (prev.includes(menuItemId)) return prev;
+        return [...prev, menuItemId];
+      }
+      return prev.filter((id) => id !== menuItemId);
+    });
+  }
+
+  function toggleSelectAllDemand(checked: boolean) {
+    if (!demand?.items?.length) {
+      setSelectedDemandItemIds([]);
+      return;
+    }
+    if (checked) {
+      setSelectedDemandItemIds(demand.items.map((item) => item.menu_item_id));
+    } else {
+      setSelectedDemandItemIds([]);
+    }
+  }
+
+  async function sendSelectedToKitchenProduction() {
+    if (!selectedDemandItemIds.length || !demand?.items?.length) return;
+
+    setSendingToKitchen(true);
+    setKitchenErr(null);
+    setKitchenMsg(null);
+
+    try {
+      const rows = selectedDemandItemIds
+        .map((id) => {
+          const item = demand.items.find((x) => x.menu_item_id === id);
+          if (!item) return null;
+
+          const plannedQty = Number(plannedQtyByItemId[id] ?? item.tomorrow ?? 0);
+
+          return {
+            menu_item: id,
+            planned_qty: String(Number.isFinite(plannedQty) ? Math.max(0, plannedQty) : 0),
+            suggested_qty: String(item.tomorrow ?? 0),
+            suggestion_basis: `FORECAST_DEMAND_${scope.toUpperCase()}`,
+            note: `From forecasting demand table (${scope})`,
+          };
+        })
+        .filter(Boolean) as Array<{
+        menu_item: number;
+        planned_qty: string;
+        suggested_qty: string;
+        suggestion_basis: string;
+        note: string;
+      }>;
+
+      if (!rows.length) {
+        setKitchenErr('No valid selected menu items to send.');
+        return;
+      }
+
+      const result = await bulkUpsertProductions({
+        date: productionDate,
+        rows,
+      });
+
+      setKitchenMsg(
+        `Sent ${result.count} menu item${result.count === 1 ? '' : 's'} to Kitchen production for ${productionDate}.`
+      );
+    } catch (e: any) {
+      setKitchenErr(e?.detail || 'Failed to send items to Kitchen production.');
+    } finally {
+      setSendingToKitchen(false);
     }
   }
 
@@ -854,23 +962,62 @@ export default function UnifiedForecastPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <Button
+              size='sm'
+              onClick={sendSelectedToKitchenProduction}
+              disabled={!selectedDemandItemIds.length || sendingToKitchen || demandLoading}
+            >
+              {sendingToKitchen ? 'Sending...' : 'Send to Kitchen'}
+            </Button>
           </div>
         </CardHeader>
+
+        <CardContent className='pt-0'>
+          <div className='flex flex-col gap-2 mb-3'>
+            <p className='text-xs text-muted-foreground'>
+              Select one or multiple menu items, edit planned qty, then send to Kitchen production. Date is set to tomorrow:
+              <span className='font-medium text-foreground'> {productionDate}</span>
+            </p>
+            <p className='text-xs text-muted-foreground'>Selected: {selectedDemandItemIds.length}</p>
+            {kitchenErr && (
+              <div className='text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-2 py-1'>
+                {kitchenErr}
+              </div>
+            )}
+            {kitchenMsg && (
+              <div className='text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1 dark:bg-emerald-900/20 dark:text-emerald-300'>
+                {kitchenMsg}
+              </div>
+            )}
+          </div>
+        </CardContent>
 
         <CardContent className="p-0 border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className='w-[70px] text-center'>
+                  <input
+                    type='checkbox'
+                    checked={
+                      !!demand?.items?.length &&
+                      selectedDemandItemIds.length === demand.items.length
+                    }
+                    onChange={(e) => toggleSelectAllDemand(e.target.checked)}
+                  />
+                </TableHead>
                 <TableHead>Item</TableHead>
                 <TableHead className="text-right">Tomorrow</TableHead>
                 <TableHead className="text-right">Next 7 Days Total</TableHead>
                 <TableHead className="text-right">Avg / Day</TableHead>
+                <TableHead className='text-right w-[180px]'>Planned Qty</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {demandLoading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-sm text-muted-foreground">
                     Loading demand forecast...
                   </TableCell>
                 </TableRow>
@@ -878,7 +1025,7 @@ export default function UnifiedForecastPage() {
 
               {!demandLoading && demandError && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-sm text-destructive">
+                  <TableCell colSpan={6} className="text-sm text-destructive">
                     {demandError}
                   </TableCell>
                 </TableRow>
@@ -886,6 +1033,13 @@ export default function UnifiedForecastPage() {
 
               {!demandLoading && !demandError && demand?.items?.map((item) => (
                 <TableRow key={item.menu_item_id}>
+                  <TableCell className='text-center'>
+                    <input
+                      type='checkbox'
+                      checked={selectedDemandItemIds.includes(item.menu_item_id)}
+                      onChange={(e) => toggleDemandSelection(item.menu_item_id, e.target.checked)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{item.menu_item_name}</TableCell>
                   <TableCell className="text-right">{item.tomorrow}</TableCell>
                   <TableCell className="text-right">{item.next_7_days_total}</TableCell>
@@ -894,12 +1048,29 @@ export default function UnifiedForecastPage() {
                       ? (item.next_7_days_total / demand.horizon_days).toFixed(1)
                       : "0.0"}
                   </TableCell>
+                  <TableCell className='text-right'>
+                    <div className='flex justify-end'>
+                      <Input
+                        type='number'
+                        min='0'
+                        step='0.01'
+                        className='h-8 w-[120px] text-right'
+                        value={plannedQtyByItemId[item.menu_item_id] ?? String(item.tomorrow ?? 0)}
+                        onChange={(e) =>
+                          setPlannedQtyByItemId((prev) => ({
+                            ...prev,
+                            [item.menu_item_id]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
 
               {!demandLoading && !demandError && !demand?.items?.length && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-sm text-muted-foreground">
                     No demand forecast data available.
                   </TableCell>
                 </TableRow>

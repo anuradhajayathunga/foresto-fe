@@ -38,8 +38,10 @@ export type KitchenIngredientAlert = {
   required_qty: string;
   current_stock: string;
   reorder_level: string;
+  projected_remaining?: string;
+  shortage_to_meet_plan?: string;
   suggested_purchase_qty: string;
-  severity: 'LOW' | 'OUT' | string;
+  severity: 'LOW' | 'CRITICAL' | string;
 };
 
 export type KitchenAlertData = {
