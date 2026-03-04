@@ -21,13 +21,18 @@ import {
   type KitchenWaste,
   type KitchenPurchaseRequest,
 } from "@/lib/kitchen";
-import { listSuppliers, type Supplier } from "@/lib/purchases";
+import {
+  listSuppliers,
+  createPurchaseInvoice,
+  type Supplier,
+} from "@/lib/purchases";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -122,6 +127,7 @@ export default function KitchenPage() {
   // Production State
   const [prodDate, setProdDate] = useState<string>(() => todayISO());
   const [prodMenuItem, setProdMenuItem] = useState<string>("");
+  const [suggestedQty, setSuggestedQty] = useState<string>("0");
   const [plannedQty, setPlannedQty] = useState<string>("0");
   const [preparedQty, setPreparedQty] = useState<string>("0");
   const [prodNote, setProdNote] = useState<string>("");
@@ -132,6 +138,30 @@ export default function KitchenPage() {
   const [productionFormSide, setProductionFormSide] = useState<
     "left" | "right"
   >("right");
+  const [productionAlertSheetOpen, setProductionAlertSheetOpen] =
+    useState(false);
+  const [productionAlertSheetSide, setProductionAlertSheetSide] = useState<
+    "left" | "right"
+  >("left");
+  const [selectedAlertRow, setSelectedAlertRow] =
+    useState<KitchenProduction | null>(null);
+  const [rowPlanAlerts, setRowPlanAlerts] = useState<KitchenAlertData | null>(
+    null,
+  );
+  const [rowAlertLoadingId, setRowAlertLoadingId] = useState<number | null>(
+    null,
+  );
+  const [rowAlertSupplier, setRowAlertSupplier] = useState<string>("");
+  const [rowAlertInvoiceDate, setRowAlertInvoiceDate] = useState<string>(() =>
+    todayISO(),
+  );
+  const [rowAlertInvoiceNo, setRowAlertInvoiceNo] = useState<string>("");
+  const [rowAlertBuyQty, setRowAlertBuyQty] = useState<Record<number, string>>(
+    {},
+  );
+  const [rowAlertLineSelected, setRowAlertLineSelected] = useState<
+    Record<number, boolean>
+  >({});
 
   // Forecast State
   const [forecastDate, setForecastDate] = useState<string>(() => tomorrowISO());
@@ -259,6 +289,9 @@ export default function KitchenPage() {
       if (supplierData.length && !alertSupplier) {
         setAlertSupplier(String(supplierData[0].id));
       }
+      if (supplierData.length && !rowAlertSupplier) {
+        setRowAlertSupplier(String(supplierData[0].id));
+      }
     } catch (e: any) {
       setErr(parseError(e));
     } finally {
@@ -333,6 +366,7 @@ export default function KitchenPage() {
       const resp = await upsertProduction({
         date: prodDate,
         menu_item: Number(prodMenuItem),
+        suggested_qty: suggestedQty || "0",
         planned_qty: plannedQty || "0",
         prepared_qty: preparedQty || "0",
         note: prodNote,
@@ -358,6 +392,7 @@ export default function KitchenPage() {
     setProductionFormOpen(true);
     setProdDate(row.date || todayISO());
     setProdMenuItem(String(row.menu_item));
+    setSuggestedQty(String(row.suggested_qty ?? "0"));
     setPlannedQty(String(row.planned_qty ?? "0"));
     setPreparedQty(String(row.prepared_qty ?? "0"));
     setProdNote(row.note || "");
@@ -394,6 +429,7 @@ export default function KitchenPage() {
   function resetProductionForm() {
     setSelectedProductionId(null);
     setProdDate(todayISO());
+    setSuggestedQty("");
     setPlannedQty("0");
     setPreparedQty("0");
     setProdNote("");
@@ -441,6 +477,143 @@ export default function KitchenPage() {
           ? `${alertCount} low-stock alert(s) detected.`
           : "No low-stock alerts.",
       );
+    } catch (e: any) {
+      setErr(parseError(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleOpenRowAlertSheet(row: KitchenProduction) {
+    setRowAlertLoadingId(row.id);
+    setSelectedAlertRow(row);
+    setProductionAlertSheetOpen(true);
+    setErr(null);
+    try {
+      const resp = await checkPlanAlerts({
+        date: row.date,
+        rows: [
+          {
+            menu_item_id: Number(row.menu_item),
+            planned_qty: String(row.planned_qty || "0"),
+          },
+        ],
+      });
+      setRowPlanAlerts(resp.alerts);
+      const initialBuyQty: Record<number, string> = {};
+      const initialLineSelected: Record<number, boolean> = {};
+      (resp.alerts?.ingredient_alerts || []).forEach((alert) => {
+        initialBuyQty[alert.item_id] = String(
+          alert.suggested_purchase_qty || "0",
+        );
+        initialLineSelected[alert.item_id] = true;
+      });
+      setRowAlertBuyQty(initialBuyQty);
+      setRowAlertLineSelected(initialLineSelected);
+      setProductionAlertCounts((prev) => ({
+        ...prev,
+        [row.id]: getAlertCount(resp.alerts),
+      }));
+    } catch (e: any) {
+      setRowPlanAlerts(null);
+      setErr(parseError(e));
+    } finally {
+      setRowAlertLoadingId(null);
+    }
+  }
+
+  async function handleCreatePurchaseRequestFromAlertSheet() {
+    if (!selectedAlertRow) return;
+    setSaving(true);
+    setErr(null);
+    setSuccess(null);
+    try {
+      const resp = await checkPlanAlerts({
+        date: selectedAlertRow.date,
+        rows: [
+          {
+            menu_item_id: Number(selectedAlertRow.menu_item),
+            planned_qty: String(selectedAlertRow.planned_qty || "0"),
+          },
+        ],
+        create_purchase_request: true,
+        note: alertNote,
+      });
+
+      setRowPlanAlerts(resp.alerts || null);
+      setProductionAlertCounts((prev) => ({
+        ...prev,
+        [selectedAlertRow.id]: getAlertCount(resp.alerts),
+      }));
+
+      const requestId = resp.purchase_request?.id;
+      if (requestId) {
+        const lineCount = resp.purchase_request?.lines?.length || 0;
+        setSuccess(
+          `Purchase request #${requestId} created (${lineCount} line${lineCount === 1 ? "" : "s"}).`,
+        );
+        await loadKitchenData();
+      } else {
+        setSuccess(
+          "No low-stock alerts found. Purchase request was not created.",
+        );
+      }
+    } catch (e: any) {
+      setErr(parseError(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateDraftPurchaseForSelectedSupplier() {
+    if (!selectedAlertRow || !rowAlertSupplier) return;
+
+    const selectedSupplierId = Number(rowAlertSupplier);
+    const alerts = rowPlanAlerts?.ingredient_alerts || [];
+
+    const lines = alerts
+      .filter((alert) => Boolean(rowAlertLineSelected[alert.item_id]))
+      .map((alert) => {
+        const qty = Number(
+          rowAlertBuyQty[alert.item_id] ?? alert.suggested_purchase_qty ?? 0,
+        );
+        if (!Number.isFinite(qty) || qty <= 0) return null;
+        return {
+          item: alert.item_id,
+          qty: qty.toFixed(2),
+          unit_cost: "0",
+        };
+      })
+      .filter(Boolean) as Array<{
+      item: number;
+      qty: string;
+      unit_cost: string;
+    }>;
+
+    if (!lines.length) {
+      setErr("No selected ingredient lines found with buy quantity > 0.");
+      return;
+    }
+
+    setSaving(true);
+    setErr(null);
+    setSuccess(null);
+    try {
+      const invoice = await createPurchaseInvoice({
+        supplier: selectedSupplierId,
+        invoice_no: rowAlertInvoiceNo || undefined,
+        invoice_date: rowAlertInvoiceDate,
+        status: "DRAFT",
+        note: `Draft from production alert row #${selectedAlertRow.id}${alertNote ? ` | ${alertNote}` : ""}`,
+        lines,
+      });
+
+      setSuccess(
+        `Draft purchase invoice #${invoice.id} created for selected supplier.`,
+      );
+      await loadKitchenData();
+      setProductionAlertSheetOpen(false);
+      router.push(`/purchases/${invoice.id}`);
     } catch (e: any) {
       setErr(parseError(e));
     } finally {
@@ -915,6 +1088,19 @@ export default function KitchenPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-1.5">
                     <Label className="text-xs uppercase text-muted-foreground">
+                      Suggested
+                    </Label>
+                    <Input
+                      value={suggestedQty}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      onChange={(e) => setSuggestedQty(e.target.value)}
+                      readOnly
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs uppercase text-muted-foreground">
                       Planned
                     </Label>
                     <Input
@@ -1208,6 +1394,7 @@ export default function KitchenPage() {
                         <TableHead className="text-center">
                           Stock Alerts
                         </TableHead>
+                        <TableHead className="text-center">Action</TableHead>
                         <TableHead className="text-right">Suggested</TableHead>
                         <TableHead className="text-right">Planned</TableHead>
                         <TableHead className="text-right">Prepared</TableHead>
@@ -1237,6 +1424,11 @@ export default function KitchenPage() {
                                   <Badge
                                     variant="outline"
                                     className="bg-amber-50 text-amber-700 border-amber-200"
+                                    onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenRowAlertSheet(row);
+                              }}
+                              // disabled={rowAlertLoadingId === row.id}
                                   >
                                     {productionAlertCounts[row.id]} Issues
                                   </Badge>
@@ -1245,6 +1437,26 @@ export default function KitchenPage() {
                                 )}
                               </>
                             )}
+                          </TableCell>
+
+                          <TableCell className="text-center py-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenRowAlertSheet(row);
+                              }}
+                              disabled={rowAlertLoadingId === row.id}
+                            >
+                              {rowAlertLoadingId === row.id ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>Alert</>
+                              )}
+                            </Button>
                           </TableCell>
 
                           <TableCell className="text-right text-muted-foreground">
@@ -1261,7 +1473,7 @@ export default function KitchenPage() {
                       {!productions.length && (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={7}
                             className="text-center h-32 text-muted-foreground"
                           >
                             No production records found for this period.
@@ -1273,6 +1485,572 @@ export default function KitchenPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {productionAlertSheetOpen && (
+              <button
+                type="button"
+                aria-label="Close production alert sheet"
+                className="fixed inset-0 z-[55]"
+                onClick={() => setProductionAlertSheetOpen(false)}
+              />
+            )}
+
+            {/* <Card
+              className={`fixed top-0 z-[60] h-screen w-full max-w-xl overflow-y-auto rounded-none shadow-xl border-muted/60 transition-transform duration-300 ${
+                productionAlertSheetSide === "right"
+                  ? `right-0 border-l ${productionAlertSheetOpen ? "translate-x-0" : "translate-x-full"}`
+                  : `left-0 border-r ${productionAlertSheetOpen ? "translate-x-0" : "-translate-x-full"}`
+              }`}
+            >
+              <CardHeader className="bg-muted/20 border-b pb-4">
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setProductionAlertSheetSide((prev) =>
+                        prev === "right" ? "left" : "right",
+                      )
+                    }
+                    title="Move sheet left/right"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setProductionAlertSheetOpen(false)}
+                    title="Close sheet"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <CardTitle className="text-base">
+                  Production Row Alerts
+                </CardTitle>
+                <CardDescription>
+                  {selectedAlertRow
+                    ? `${selectedAlertRow.date} • ${selectedAlertRow.menu_item_name || selectedAlertRow.menu_item}`
+                    : "Check low-stock alerts for a production row."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                {!selectedAlertRow ? (
+                  <p className="text-sm text-muted-foreground">
+                    Click the Alert button in a production row.
+                  </p>
+                ) : rowAlertLoadingId === selectedAlertRow.id ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Checking alerts...
+                  </div>
+                ) : (rowPlanAlerts?.ingredient_alerts?.length || 0) > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs uppercase text-muted-foreground">
+                          Supplier
+                        </Label>
+                        <Select
+                          value={rowAlertSupplier}
+                          onValueChange={setRowAlertSupplier}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Select supplier" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {suppliers.map((supplier) => (
+                              <SelectItem
+                                key={supplier.id}
+                                value={String(supplier.id)}
+                              >
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs uppercase text-muted-foreground">
+                          Invoice Date
+                        </Label>
+                        <Input
+                          type="date"
+                          className="h-8"
+                          value={rowAlertInvoiceDate}
+                          onChange={(e) =>
+                            setRowAlertInvoiceDate(e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs uppercase text-muted-foreground">
+                          Invoice No
+                        </Label>
+                        <Input
+                          className="h-8"
+                          value={rowAlertInvoiceNo}
+                          onChange={(e) => setRowAlertInvoiceNo(e.target.value)}
+                          placeholder="Optional"
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs uppercase text-muted-foreground">
+                          Note
+                        </Label>
+                        <Input
+                          className="h-8"
+                          value={alertNote}
+                          onChange={(e) => setAlertNote(e.target.value)}
+                          placeholder="Optional note"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">
+                        Selected low-stock ingredients for chosen supplier
+                      </p>
+                      {(() => {
+                        const selectedRows = (
+                          rowPlanAlerts?.ingredient_alerts || []
+                        ).filter(
+                          (alert) =>
+                            Boolean(rowAlertLineSelected[alert.item_id]) &&
+                            Number(
+                              rowAlertBuyQty[alert.item_id] ??
+                                alert.suggested_purchase_qty ??
+                                0,
+                            ) > 0,
+                        );
+
+                        if (!selectedRows.length) {
+                          return (
+                            <p>
+                              No selected ingredient lines for this supplier.
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1">
+                            <p>
+                              {selectedRows.length} ingredient line
+                              {selectedRows.length === 1 ? "" : "s"} selected.
+                            </p>
+                            {selectedRows.map((row) => (
+                              <p key={row.item_id}>
+                                • {row.item_name} — buy{" "}
+                                {fmtQty(
+                                  rowAlertBuyQty[row.item_id] ??
+                                    row.suggested_purchase_qty,
+                                )}{" "}
+                                {row.unit || ""}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="rounded-md border bg-background overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="h-8 text-xs text-center">
+                              Select
+                            </TableHead>
+                            <TableHead className="h-8 text-xs">
+                              Ingredient
+                            </TableHead>
+                            <TableHead className="h-8 text-xs text-right">
+                              Need
+                            </TableHead>
+                            <TableHead className="h-8 text-xs text-right">
+                              Stock
+                            </TableHead>
+                            <TableHead className="h-8 text-xs text-right">
+                              Suggested
+                            </TableHead>
+                            <TableHead className="h-8 text-xs text-right">
+                              Buy Qty
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(rowPlanAlerts?.ingredient_alerts || []).map(
+                            (alert) => (
+                              <TableRow key={alert.item_id}>
+                                <TableCell className="text-center">
+                                  <Checkbox
+                                    checked={Boolean(
+                                      rowAlertLineSelected[alert.item_id],
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      setRowAlertLineSelected((prev) => ({
+                                        ...prev,
+                                        [alert.item_id]: Boolean(checked),
+                                      }))
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span>{alert.item_name}</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        alert.severity === "CRITICAL"
+                                          ? "border-red-300 text-red-700"
+                                          : "border-yellow-300 text-yellow-700"
+                                      }
+                                    >
+                                      {alert.severity}
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs text-right">
+                                  {fmtQty(alert.required_qty)}{" "}
+                                  {alert.unit || ""}
+                                </TableCell>
+                                <TableCell className="text-xs text-right">
+                                  {fmtQty(alert.current_stock)}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-medium">
+                                  {fmtQty(alert.suggested_purchase_qty)}
+                                </TableCell>
+                                <TableCell className="text-xs text-right w-[120px]">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    className="h-8 text-right"
+                                    value={
+                                      rowAlertBuyQty[alert.item_id] ??
+                                      String(
+                                        alert.suggested_purchase_qty || "0",
+                                      )
+                                    }
+                                    onChange={(e) =>
+                                      setRowAlertBuyQty((prev) => ({
+                                        ...prev,
+                                        [alert.item_id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ),
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    No low-stock alerts for this production row.
+                  </div>
+                )}
+
+                <div className="pt-2 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleCreatePurchaseRequestFromAlertSheet}
+                    disabled={
+                      saving ||
+                      !selectedAlertRow ||
+                      rowAlertLoadingId === selectedAlertRow?.id ||
+                      (rowPlanAlerts?.ingredient_alerts?.length || 0) === 0
+                    }
+                  >
+                    Create Purchase Request
+                  </Button>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    variant="secondary"
+                    onClick={handleCreateDraftPurchaseForSelectedSupplier}
+                    disabled={
+                      saving ||
+                      !selectedAlertRow ||
+                      !rowAlertSupplier ||
+                      rowAlertLoadingId === selectedAlertRow?.id ||
+                      (rowPlanAlerts?.ingredient_alerts?.length || 0) === 0
+                    }
+                  >
+                    Buy Selected Supplier
+                  </Button>
+                </div>
+              </CardContent>
+            </Card> */}
+            {/* --- Replaced Side-Sheet with Pop-up Dialog --- */}
+            <Dialog
+              open={productionAlertSheetOpen}
+              onOpenChange={setProductionAlertSheetOpen}
+            >
+              <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Production Row Alerts</DialogTitle>
+                  <DialogDescription>
+                    {selectedAlertRow
+                      ? `${selectedAlertRow.date} • ${selectedAlertRow.menu_item_name || selectedAlertRow.menu_item}`
+                      : "Check low-stock alerts for a production row."}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-2">
+                  {!selectedAlertRow ? (
+                    <p className="text-sm text-muted-foreground">
+                      Click the Alert button in a production row.
+                    </p>
+                  ) : rowAlertLoadingId === selectedAlertRow.id ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Checking alerts...
+                    </div>
+                  ) : (rowPlanAlerts?.ingredient_alerts?.length || 0) > 0 ? (
+                    <>
+                      {/* Form Inputs */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs uppercase text-muted-foreground">
+                            Supplier
+                          </Label>
+                          <Select
+                            value={rowAlertSupplier}
+                            onValueChange={setRowAlertSupplier}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers.map((supplier) => (
+                                <SelectItem
+                                  key={supplier.id}
+                                  value={String(supplier.id)}
+                                >
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs uppercase text-muted-foreground">
+                            Invoice Date
+                          </Label>
+                          <Input
+                            type="date"
+                            className="h-9"
+                            value={rowAlertInvoiceDate}
+                            onChange={(e) =>
+                              setRowAlertInvoiceDate(e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs uppercase text-muted-foreground">
+                            Invoice No
+                          </Label>
+                          <Input
+                            className="h-9"
+                            value={rowAlertInvoiceNo}
+                            onChange={(e) =>
+                              setRowAlertInvoiceNo(e.target.value)
+                            }
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs uppercase text-muted-foreground">
+                            Note
+                          </Label>
+                          <Input
+                            className="h-9"
+                            value={alertNote}
+                            onChange={(e) => setAlertNote(e.target.value)}
+                            placeholder="Optional note"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Summary Box */}
+                      <div className="rounded-md border border-dashed bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground mb-1">
+                          Selected low-stock ingredients for chosen supplier
+                        </p>
+                        {(() => {
+                          const selectedRows = (
+                            rowPlanAlerts?.ingredient_alerts || []
+                          ).filter(
+                            (alert) =>
+                              Boolean(rowAlertLineSelected[alert.item_id]) &&
+                              Number(
+                                rowAlertBuyQty[alert.item_id] ??
+                                  alert.suggested_purchase_qty ??
+                                  0,
+                              ) > 0,
+                          );
+
+                          if (!selectedRows.length)
+                            return <p>No lines selected.</p>;
+
+                          return (
+                            <div className="space-y-1">
+                              <p>
+                                {selectedRows.length} item
+                                {selectedRows.length === 1 ? "" : "s"} selected.
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Ingredients Table */}
+                      <div className="rounded-md border bg-background overflow-auto max-h-[35vh]">
+                        <Table>
+                          <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                            <TableRow>
+                              <TableHead className="h-8 text-xs text-center w-[50px]">
+                                Select
+                              </TableHead>
+                              <TableHead className="h-8 text-xs">
+                                Ingredient
+                              </TableHead>
+                              <TableHead className="h-8 text-xs text-right">
+                                Need
+                              </TableHead>
+                              <TableHead className="h-8 text-xs text-right">
+                                Stock
+                              </TableHead>
+                              <TableHead className="h-8 text-xs text-right">
+                                Buy Qty
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(rowPlanAlerts?.ingredient_alerts || []).map(
+                              (alert) => (
+                                <TableRow key={alert.item_id}>
+                                  <TableCell className="text-center">
+                                    <Checkbox
+                                      checked={Boolean(
+                                        rowAlertLineSelected[alert.item_id],
+                                      )}
+                                      onCheckedChange={(checked) =>
+                                        setRowAlertLineSelected((prev) => ({
+                                          ...prev,
+                                          [alert.item_id]: Boolean(checked),
+                                        }))
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-medium">
+                                        {alert.item_name}
+                                      </span>
+                                      <Badge
+                                        variant="outline"
+                                        className={`w-fit text-[10px] ${
+                                          alert.severity === "CRITICAL"
+                                            ? "border-red-300 text-red-700 bg-red-50"
+                                            : "border-yellow-300 text-yellow-700 bg-yellow-50"
+                                        }`}
+                                      >
+                                        {alert.severity}
+                                      </Badge>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right">
+                                    {fmtQty(alert.required_qty)}{" "}
+                                    {alert.unit || ""}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right">
+                                    {fmtQty(alert.current_stock)}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-right w-[120px]">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="h-8 text-right font-medium text-emerald-700"
+                                      value={
+                                        rowAlertBuyQty[alert.item_id] ??
+                                        String(
+                                          alert.suggested_purchase_qty || "0",
+                                        )
+                                      }
+                                      onChange={(e) =>
+                                        setRowAlertBuyQty((prev) => ({
+                                          ...prev,
+                                          [alert.item_id]: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ),
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                      No low-stock alerts for this production row.
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-4 border-t flex justify-end gap-3 mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setProductionAlertSheetOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleCreatePurchaseRequestFromAlertSheet}
+                      disabled={
+                        saving ||
+                        !selectedAlertRow ||
+                        rowAlertLoadingId === selectedAlertRow?.id ||
+                        (rowPlanAlerts?.ingredient_alerts?.length || 0) === 0
+                      }
+                    >
+                      Create Request
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleCreateDraftPurchaseForSelectedSupplier}
+                      disabled={
+                        saving ||
+                        !selectedAlertRow ||
+                        !rowAlertSupplier ||
+                        rowAlertLoadingId === selectedAlertRow?.id ||
+                        (rowPlanAlerts?.ingredient_alerts?.length || 0) === 0
+                      }
+                    >
+                      {saving && (
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Buy Selected Supplier
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </TabsContent>
 
