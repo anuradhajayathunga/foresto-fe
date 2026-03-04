@@ -564,7 +564,10 @@ export default function KitchenPage() {
     setWasteDate(row.date || todayISO());
     setWasteMenuItem(String(row.menu_item));
     setWasteQty(String(row.waste_qty ?? ""));
-    setWasteReason((row.reason as "UNSOLD" | "BURNT" | "RETURNED" | "EXPIRED" | "") || "UNSOLD");
+    setWasteReason(
+      (row.reason as "UNSOLD" | "BURNT" | "RETURNED" | "EXPIRED" | "") ||
+        "UNSOLD",
+    );
     setWasteNote(row.note || "");
     setErr(null);
     setSuccess(`Loaded waste row #${row.id}.`);
