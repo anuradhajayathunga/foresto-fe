@@ -129,7 +129,9 @@ export default function KitchenPage() {
     number | null
   >(null);
   const [productionFormOpen, setProductionFormOpen] = useState(false);
-  const [productionFormSide, setProductionFormSide] = useState<"left" | "right">("right");
+  const [productionFormSide, setProductionFormSide] = useState<
+    "left" | "right"
+  >("right");
 
   // Forecast State
   const [forecastDate, setForecastDate] = useState<string>(() => tomorrowISO());
@@ -156,6 +158,9 @@ export default function KitchenPage() {
       waste_rate_pct: number;
     }>
   >([]);
+  const [selectedWasteId, setSelectedWasteId] = useState<number | null>(null);
+  const [wasteFormOpen, setWasteFormOpen] = useState(false);
+  const [wasteFormSide, setWasteFormSide] = useState<"left" | "right">("right");
 
   // UI State
   const [saving, setSaving] = useState(false);
@@ -532,12 +537,38 @@ export default function KitchenPage() {
         note: wasteNote,
       });
       setSuccess("Waste row saved.");
+      setSelectedWasteId(null);
+      setWasteFormOpen(false);
       await loadKitchenData();
     } catch (e: any) {
       setErr(parseError(e));
     } finally {
       setSaving(false);
     }
+  }
+
+  function openNewWasteForm() {
+    setSelectedWasteId(null);
+    setWasteDate(todayISO());
+    setWasteQty("");
+    setWasteReason("UNSOLD");
+    setWasteNote("");
+    if (items.length && !wasteMenuItem) setWasteMenuItem(String(items[0].id));
+    setErr(null);
+    setSuccess(null);
+    setWasteFormOpen(true);
+  }
+
+  function handleSelectWasteRow(row: KitchenWaste) {
+    setSelectedWasteId(row.id);
+    setWasteDate(row.date || todayISO());
+    setWasteMenuItem(String(row.menu_item));
+    setWasteQty(String(row.waste_qty ?? ""));
+    setWasteReason((row.reason as "UNSOLD" | "BURNT" | "RETURNED" | "EXPIRED" | "") || "UNSOLD");
+    setWasteNote(row.note || "");
+    setErr(null);
+    setSuccess(`Loaded waste row #${row.id}.`);
+    setWasteFormOpen(true);
   }
 
   async function handleLoadWasteVsSales() {
@@ -1212,7 +1243,7 @@ export default function KitchenPage() {
                               </>
                             )}
                           </TableCell>
-                          
+
                           <TableCell className="text-right text-muted-foreground">
                             {fmtQty(row.suggested_qty)}
                           </TableCell>
@@ -1247,13 +1278,66 @@ export default function KitchenPage() {
           value="waste"
           className="space-y-6 animate-in fade-in slide-in-from-bottom-2"
         >
+          <div className="flex justify-end">
+            <Button onClick={openNewWasteForm} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Waste
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {wasteFormOpen && (
+              <button
+                type="button"
+                aria-label="Close waste form"
+                className="fixed inset-0 z-40 bg-black/40"
+                onClick={() => setWasteFormOpen(false)}
+              />
+            )}
+
             {/* Waste Form (Left Column) */}
-            <Card className="lg:col-span-4 h-fit">
+            <Card
+              className={`fixed top-0 z-50 h-screen w-full max-w-xl overflow-y-auto rounded-none shadow-xl transition-transform duration-300 ${
+                wasteFormSide === "right"
+                  ? `right-0 border-l ${wasteFormOpen ? "translate-x-0" : "translate-x-full"}`
+                  : `left-0 border-r ${wasteFormOpen ? "translate-x-0" : "-translate-x-full"}`
+              }`}
+            >
               <CardHeader className="bg-muted/20 border-b pb-4">
-                <CardTitle className="text-base">Log Waste</CardTitle>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setWasteFormSide((prev) =>
+                        prev === "right" ? "left" : "right",
+                      )
+                    }
+                    title="Move form left/right"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWasteFormOpen(false)}
+                    title="Close form"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <CardTitle className="text-base">
+                  {selectedWasteId ? "Edit Waste" : "Log Waste"}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
+                {selectedWasteId && (
+                  <div className="text-xs rounded border border-orange-200 bg-orange-50 text-orange-800 px-3 py-2">
+                    Editing Row #{selectedWasteId}
+                  </div>
+                )}
                 <div className="grid gap-1.5">
                   <Label className="text-xs uppercase text-muted-foreground">
                     Date
@@ -1334,13 +1418,13 @@ export default function KitchenPage() {
                   onClick={handleSaveWaste}
                   disabled={saving}
                 >
-                  Record Waste
+                  {selectedWasteId ? "Update Waste" : "Record Waste"}
                 </Button>
               </CardContent>
             </Card>
 
             {/* Waste Data & Analytics (Right Column) */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-12 space-y-6">
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card className="bg-muted/20 border-dashed">
@@ -1383,7 +1467,11 @@ export default function KitchenPage() {
                     </TableHeader>
                     <TableBody>
                       {wastes.map((row) => (
-                        <TableRow key={row.id}>
+                        <TableRow
+                          key={row.id}
+                          onClick={() => handleSelectWasteRow(row)}
+                          className={`cursor-pointer transition-colors ${selectedWasteId === row.id ? "bg-muted/80" : "hover:bg-muted/30"}`}
+                        >
                           <TableCell className="font-medium text-xs">
                             {row.date}
                           </TableCell>
