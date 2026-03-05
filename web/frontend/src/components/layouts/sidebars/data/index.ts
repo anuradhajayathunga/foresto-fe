@@ -37,7 +37,7 @@ interface NavSection {
 
 export const NAV_DATA: NavSection[] = [
   {
-    label: "  ",
+    label: "MAIN",
     items: [
       {
         title: "Dashboard",
@@ -45,89 +45,41 @@ export const NAV_DATA: NavSection[] = [
         icon: LayoutDashboard,
         items: [],
       },
+      { title: "POS", url: "/sales", icon: Receipt, items: [] },
     ],
   },
   {
-    label: "MENU & KITCHEN",
+    label: "RESTAURANT",
     items: [
-      {
-        title: "Menu Items",
-        url: "/menu",
-        icon: Utensils,
-        items: [],
-      },
-      {
-        title: "Kitchen",
-        url: "/kitchen",
-        icon: ChefHat,
-        items: [],
-      },
-      {
-        title: "Recipes",
-        url: "/recipes",
-        icon: CookingPot,
-        items: [],
-      },
+      { title: "Menu", url: "/menu", icon: Utensils, items: [] },
+      { title: "Kitchen", url: "/kitchen", icon: ChefHat, items: [] },
+      { title: "Recipes", url: "/recipes", icon: CookingPot, items: [] },
+      { title: "Inventory", url: "/inventory", icon: Package, items: [] },
     ],
   },
   {
-    label: "INVENTORY & SUPPLY",
+    label: "PROCUREMENT",
     items: [
-      {
-        title: "Inventory",
-        url: "/inventory",
-        icon: Package,
-        items: [],
-      },
-      {
-        title: "Purchases",
-        url: "/purchases",
-        icon: ClipboardList,
-        items: [],
-      },
+      { title: "Purchases", url: "/purchases", icon: ClipboardList, items: [] },
       { title: "Suppliers", url: "/suppliers", icon: Truck, items: [] },
     ],
   },
   {
-    label: "Business",
+    label: "INSIGHTS",
     items: [
-      {
-        title: "Sales (POS)",
-        url: "/sales",
-        icon: Receipt,
-        items: [],
-      },
-      // {
-      //   title: 'Analytics',
-      //   url: '/analytics',
-      //   icon: BarChart3,
-      //   items: [],
-      // },
       {
         title: "AI Forecasting",
         url: "/forecasting",
         icon: Sparkles,
         items: [],
       },
-      {
-        title: "Team Users",
-        url: "/team",
-        icon: Users,
-        items: [],
-      },
-
-      // {
-      //   title: 'Staff & Users',
-      //   icon: UserCog,
-      //   items: [{ title: 'Employees', url: '/staff', items: [] }],
-      // },
-
-      // {
-      //   title: 'Settings',
-      //   url: '/settings',
-      //   icon: Settings,
-      //   items: [],
-      // },
     ],
   },
-] as const;
+  {
+    label: "SETTINGS",
+    items: [
+      { title: "Staff & Users", url: "/team", icon: Users, items: [] },
+      { title: "Settings", url: "/settings", icon: Settings, items: [] },
+    ],
+  },
+];
