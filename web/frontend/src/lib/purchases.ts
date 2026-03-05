@@ -116,6 +116,16 @@ export async function voidPurchaseInvoice(id: string, reason?: string) {
   if (!res.ok) throw data;
   return data as PurchaseInvoice;
 }
+
+export async function confirmPurchaseInvoice(id: string) {
+  const res = await authFetch(`/api/purchases/invoices/${id}/confirm/`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as PurchaseInvoice;
+}
+
 export async function createPurchaseDraftFromForecast(payload: {
   supplier: number;
   scope: "tomorrow" | "next7";

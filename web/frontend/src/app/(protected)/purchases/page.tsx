@@ -6,6 +6,8 @@ import {
   listPurchaseInvoices,
   PurchaseInvoice,
   exportPurchasesCsv,
+  confirmPurchaseInvoice,
+  voidPurchaseInvoice,
 } from "@/lib/purchases";
 import {
   Plus,
@@ -21,7 +23,11 @@ import {
   ArrowUpRight,
   Eye,
   Pencil,
+  CheckCircle2,
+  CircleSlash,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +73,10 @@ export default function PurchasesPage() {
   const [search, setSearch] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [voidingInvoice, setVoidingInvoice] = useState<PurchaseInvoice | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidErr, setVoidErr] = useState<string | null>(null);
 
   // Default to current month for export
   const [from, setFrom] = useState(() =>
@@ -77,9 +87,50 @@ export default function PurchasesPage() {
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [mode, setMode] = useState<"invoices" | "lines">("invoices");
 
+  async function loadInvoices() {
+    const data = await listPurchaseInvoices();
+    setRows(data);
+  }
+
   useEffect(() => {
-    (async () => setRows(await listPurchaseInvoices()))();
+    void loadInvoices();
   }, []);
+
+  function getErrorMessage(e: any): string {
+    return e?.detail || e?.non_field_errors?.[0] || "Request failed";
+  }
+
+  async function handleConfirmInvoice(invoice: PurchaseInvoice) {
+    setActionLoadingId(invoice.id);
+    try {
+      await confirmPurchaseInvoice(String(invoice.id));
+      toast.success("Invoice confirmed and stock updated");
+      await loadInvoices();
+    } catch (e: any) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleVoidInvoice() {
+    if (!voidingInvoice) return;
+    setActionLoadingId(voidingInvoice.id);
+    setVoidErr(null);
+    try {
+      await voidPurchaseInvoice(String(voidingInvoice.id), voidReason);
+      toast.success("Invoice voided");
+      setVoidingInvoice(null);
+      setVoidReason("");
+      await loadInvoices();
+    } catch (e: any) {
+      const msg = getErrorMessage(e);
+      setVoidErr(msg);
+      toast.error(msg);
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -373,6 +424,33 @@ export default function PurchasesPage() {
                         <Pencil className="h-4 w-4 mr-2 text-muted-foreground" />{" "}
                         Edit Invoice
                       </DropdownMenuItem>
+                      {(p.status === "REQUEST" || p.status === "DRAFT") && (
+                        <DropdownMenuItem
+                          className="cursor-pointer flex items-center"
+                          disabled={actionLoadingId === p.id}
+                          onClick={() => void handleConfirmInvoice(p)}
+                        >
+                          {actionLoadingId === p.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin text-emerald-600" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-600" />
+                          )}
+                          Confirm Invoice
+                        </DropdownMenuItem>
+                      )}
+                      {p.status !== "VOID" && (
+                        <DropdownMenuItem
+                          className="cursor-pointer flex items-center text-destructive focus:text-destructive"
+                          disabled={actionLoadingId === p.id}
+                          onClick={() => {
+                            setVoidingInvoice(p);
+                            setVoidErr(null);
+                          }}
+                        >
+                          <CircleSlash className="h-4 w-4 mr-2" />
+                          Void Invoice
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="cursor-pointer flex items-center text-destructive focus:text-destructive">
                         Delete
@@ -414,6 +492,61 @@ export default function PurchasesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog
+        open={Boolean(voidingInvoice)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVoidingInvoice(null);
+            setVoidReason("");
+            setVoidErr(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Void Invoice {voidingInvoice ? `#${voidingInvoice.id}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              This will set status to VOID and reverse stock if already confirmed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="void_reason">Reason (optional)</Label>
+            <Input
+              id="void_reason"
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="e.g. Wrong entry"
+            />
+            {voidErr ? (
+              <div className="text-sm text-destructive">{voidErr}</div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVoidingInvoice(null);
+                setVoidReason("");
+                setVoidErr(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleVoidInvoice()}
+              disabled={!voidingInvoice || actionLoadingId === voidingInvoice?.id}
+            >
+              {actionLoadingId === voidingInvoice?.id ? "Voiding..." : "Void"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
