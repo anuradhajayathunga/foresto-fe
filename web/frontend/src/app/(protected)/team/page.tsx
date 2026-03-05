@@ -377,7 +377,7 @@ export default function TeamUsersPage() {
           {/* <CardTitle className="text-lg">Team Members</CardTitle>
           <CardDescription>{filtered.length} result(s)</CardDescription> */}
           {/* Filters */}
-          <div className="bg-white border-b border-slate-100 p-4">
+          <div className="border-b border-slate-100 p-4">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div className="relative w-full sm:max-w-xs">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -385,7 +385,7 @@ export default function TeamUsersPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search users..."
-                  className="pl-9 h-9 bg-slate-50/50 border-slate-200"
+                  className="pl-9 h-9 border-slate-200"
                 />
               </div>
 
