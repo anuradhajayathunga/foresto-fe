@@ -30,3 +30,27 @@ export async function importCsv(kind: string, file: File, dryRun = false) {
   if (!res.ok) throw data;
   return data;
 }
+
+export async function downloadImportTemplate(kind: string) {
+  const res = await authFetch(
+    `/api/import/template/?kind=${encodeURIComponent(kind)}`,
+    {
+      method: "GET",
+    },
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw data;
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template_${kind}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
