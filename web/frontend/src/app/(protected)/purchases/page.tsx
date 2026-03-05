@@ -74,7 +74,9 @@ export default function PurchasesPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
-  const [voidingInvoice, setVoidingInvoice] = useState<PurchaseInvoice | null>(null);
+  const [voidingInvoice, setVoidingInvoice] = useState<PurchaseInvoice | null>(
+    null,
+  );
   const [voidReason, setVoidReason] = useState("");
   const [voidErr, setVoidErr] = useState<string | null>(null);
 
@@ -509,7 +511,8 @@ export default function PurchasesPage() {
               Void Invoice {voidingInvoice ? `#${voidingInvoice.id}` : ""}
             </DialogTitle>
             <DialogDescription>
-              This will set status to VOID and reverse stock if already confirmed.
+              This will set status to VOID and reverse stock if already
+              confirmed.
             </DialogDescription>
           </DialogHeader>
 
@@ -540,7 +543,9 @@ export default function PurchasesPage() {
             <Button
               variant="destructive"
               onClick={() => void handleVoidInvoice()}
-              disabled={!voidingInvoice || actionLoadingId === voidingInvoice?.id}
+              disabled={
+                !voidingInvoice || actionLoadingId === voidingInvoice?.id
+              }
             >
               {actionLoadingId === voidingInvoice?.id ? "Voiding..." : "Void"}
             </Button>
@@ -597,9 +602,7 @@ function statusBadge(status: string) {
       );
     case "VOID":
       return (
-        <Badge className="bg-red-50 text-red-700 hover:bg-red-50">
-          Void
-        </Badge>
+        <Badge className="bg-red-50 text-red-700 hover:bg-red-50">Void</Badge>
       );
     default:
       return <Badge>{status}</Badge>;

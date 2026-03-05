@@ -109,6 +109,12 @@ function fmtQty(v: string | number | null | undefined) {
   return n.toFixed(2);
 }
 
+function generatePurchaseReferenceNo() {
+  const dateStr = todayISO().replace(/-/g, "");
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `PUR-${dateStr}-${random}`;
+}
+
 export default function KitchenPage() {
   const router = useRouter();
 
@@ -155,7 +161,9 @@ export default function KitchenPage() {
   const [rowAlertInvoiceDate, setRowAlertInvoiceDate] = useState<string>(() =>
     todayISO(),
   );
-  const [rowAlertInvoiceNo, setRowAlertInvoiceNo] = useState<string>("");
+  const [rowAlertInvoiceNo, setRowAlertInvoiceNo] = useState<string>(() =>
+    generatePurchaseReferenceNo(),
+  );
   const [rowAlertBuyQty, setRowAlertBuyQty] = useState<Record<number, string>>(
     {},
   );
@@ -205,7 +213,9 @@ export default function KitchenPage() {
   );
   const [convertSupplier, setConvertSupplier] = useState<string>("");
   const [convertDate, setConvertDate] = useState<string>(() => todayISO());
-  const [convertInvoiceNo, setConvertInvoiceNo] = useState<string>("");
+  const [convertInvoiceNo, setConvertInvoiceNo] = useState<string>(() =>
+    generatePurchaseReferenceNo(),
+  );
   const [convertNote, setConvertNote] = useState<string>("");
 
   // Low-stock alerts and purchase actions from production row
@@ -214,7 +224,9 @@ export default function KitchenPage() {
   const [alertInvoiceDate, setAlertInvoiceDate] = useState<string>(() =>
     todayISO(),
   );
-  const [alertInvoiceNo, setAlertInvoiceNo] = useState<string>("");
+  const [alertInvoiceNo, setAlertInvoiceNo] = useState<string>(() =>
+    generatePurchaseReferenceNo(),
+  );
   const [alertNote, setAlertNote] = useState<string>(
     "Auto-created from kitchen low-stock check",
   );
@@ -601,7 +613,7 @@ export default function KitchenPage() {
     try {
       const invoice = await createPurchaseInvoice({
         supplier: selectedSupplierId,
-        invoice_no: rowAlertInvoiceNo || undefined,
+        invoice_no: rowAlertInvoiceNo.trim() || generatePurchaseReferenceNo(),
         invoice_date: rowAlertInvoiceDate,
         status: "DRAFT",
         note: `Draft from production alert row #${selectedAlertRow.id}${alertNote ? ` | ${alertNote}` : ""}`,
@@ -675,7 +687,8 @@ export default function KitchenPage() {
         auto_create_purchase_draft: true,
         supplier: Number(alertSupplier),
         purchase_invoice_date: alertInvoiceDate,
-        purchase_invoice_no: alertInvoiceNo,
+        purchase_invoice_no:
+          alertInvoiceNo.trim() || generatePurchaseReferenceNo(),
         note: alertNote,
       });
       setPlanAlerts(resp.alerts);
@@ -784,6 +797,9 @@ export default function KitchenPage() {
     setSelectedRequestId(requestId);
     if (suppliers.length && !convertSupplier)
       setConvertSupplier(String(suppliers[0].id));
+    if (!convertInvoiceNo.trim()) {
+      setConvertInvoiceNo(generatePurchaseReferenceNo());
+    }
     setConvertOpen(true);
   }
 
@@ -798,7 +814,7 @@ export default function KitchenPage() {
         {
           supplier: Number(convertSupplier),
           invoice_date: convertDate,
-          invoice_no: convertInvoiceNo,
+          invoice_no: convertInvoiceNo.trim() || generatePurchaseReferenceNo(),
           note: convertNote,
         },
       );
@@ -1263,6 +1279,15 @@ export default function KitchenPage() {
                         onChange={(e) => setAlertInvoiceNo(e.target.value)}
                         placeholder="Optional"
                       />
+                      <button
+                        type="button"
+                        className="text-xs text-primary w-fit"
+                        onClick={() =>
+                          setAlertInvoiceNo(generatePurchaseReferenceNo())
+                        }
+                      >
+                        Auto-generate
+                      </button>
                     </div>
                     <div className="grid gap-1.5">
                       <Label className="text-xs uppercase text-muted-foreground">
@@ -1867,6 +1892,17 @@ export default function KitchenPage() {
                             }
                             placeholder="Optional"
                           />
+                          <button
+                            type="button"
+                            className="text-xs text-primary w-fit"
+                            onClick={() =>
+                              setRowAlertInvoiceNo(
+                                generatePurchaseReferenceNo(),
+                              )
+                            }
+                          >
+                            Auto-generate
+                          </button>
                         </div>
                         <div className="grid gap-1.5">
                           <Label className="text-xs uppercase text-muted-foreground">
@@ -2516,6 +2552,15 @@ export default function KitchenPage() {
                   onChange={(e) => setConvertInvoiceNo(e.target.value)}
                   placeholder="Optional"
                 />
+                <button
+                  type="button"
+                  className="text-xs text-primary w-fit"
+                  onClick={() =>
+                    setConvertInvoiceNo(generatePurchaseReferenceNo())
+                  }
+                >
+                  Auto-generate
+                </button>
               </div>
             </div>
             <div className="grid gap-1.5">
