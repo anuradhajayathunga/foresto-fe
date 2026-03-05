@@ -538,7 +538,7 @@ export default function ForecastAccuracyPage() {
           </CardHeader>
         </Card>
 
-        <Card className="shadow-sm border-slate-200/60 bg-amber-50 border-amber-100/50">
+        <Card className="shadow-sm border-slate-200/60 bg-amber-5">
           <CardHeader className="pb-1">
             <CardDescription className="flex items-center gap-2 text-amber-800 font-medium">
               <ClipboardList className="h-4 w-4 text-amber-600" /> Prep Imbalance

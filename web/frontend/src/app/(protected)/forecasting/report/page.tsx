@@ -165,7 +165,7 @@ export default function ForecastReportPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-border/60 bg-orange-50/30 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/30">
+          <Card className="shadow-sm border-border/60 bg-orange-50/30 dark:bg-orange-950/10 dark:border-orange-900/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-400 uppercase tracking-wider">Stock Alerts</CardTitle>
             </CardHeader>
