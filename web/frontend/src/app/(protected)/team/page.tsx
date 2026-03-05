@@ -277,6 +277,42 @@ export default function TeamUsersPage() {
     }
   }
 
+  function RoleBadge({ role }: { role: TeamRole }) {
+  let classes = "bg-slate-100 text-slate-700 border-slate-200"; // default (STAFF/VIEWER)
+  
+  if (role === 'OWNER' || role === 'ADMIN') {
+    classes = "bg-indigo-50 text-indigo-700 border-indigo-200";
+  } else if (role === 'MANAGER') {
+    classes = "bg-blue-50 text-blue-700 border-blue-200";
+  }
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border ${classes}`}>
+      {role}
+    </span>
+  );
+}
+
+function StatusIndicator({ isActive }: { isActive?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="relative flex h-2 w-2">
+        {isActive && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-20"></span>
+        )}
+        <span
+          className={`relative inline-flex rounded-full h-2 w-2 ${
+            isActive ? 'bg-emerald-500' : 'bg-slate-300'
+          }`}
+        ></span>
+      </span>
+      <span className={`text-sm font-medium ${isActive ? 'text-slate-700' : 'text-slate-500'}`}>
+        {isActive ? 'Active' : 'Inactive'}
+      </span>
+    </div>
+  );
+}
+
   return (
     <main className='flex flex-col gap-6 p-6 md:p-8 max-w-[1600px] mx-auto w-full'>
       {/* Header */}
@@ -304,47 +340,44 @@ export default function TeamUsersPage() {
       </div>
 
       {/* Filters */}
-      <Card className='rounded-2xl'>
-        <CardHeader className='pb-3'>
-          <CardTitle className='text-lg'>Filters</CardTitle>
-        </CardHeader>
-        <CardContent className='grid grid-cols-1 md:grid-cols-3 gap-3'>
-          <div className='relative'>
-            <Search className='h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder='Search by name, username, email...'
-              className='pl-9'
-            />
+       <div className="bg-white border-b border-slate-100 p-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className='relative w-full sm:max-w-xs'>
+              <Search className='h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400' />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder='Search users...'
+                className='pl-9 h-9 bg-slate-50/50 border-slate-200'
+              />
+            </div>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
+                <SelectTrigger className="h-9 w-full sm:w-[130px] bg-white">
+                  <SelectValue placeholder='Role' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='ALL'>All Roles</SelectItem>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                <SelectTrigger className="h-9 w-full sm:w-[130px] bg-white">
+                  <SelectValue placeholder='Status' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='ALL'>All Status</SelectItem>
+                  <SelectItem value='ACTIVE'>Active</SelectItem>
+                  <SelectItem value='INACTIVE'>Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-
-          <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
-            <SelectTrigger>
-              <SelectValue placeholder='Role' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='ALL'>All roles</SelectItem>
-              {ROLE_OPTIONS.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger>
-              <SelectValue placeholder='Status' />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='ALL'>All status</SelectItem>
-              <SelectItem value='ACTIVE'>Active</SelectItem>
-              <SelectItem value='INACTIVE'>Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+        </div>
 
       {/* Table */}
       <Card className='rounded-2xl'>
@@ -388,14 +421,10 @@ export default function TeamUsersPage() {
                       <TableCell>{m.username}</TableCell>
                       <TableCell>{m.email}</TableCell>
                       <TableCell>
-                        <Badge variant={roleBadgeVariant(m.role)}>{m.role}</Badge>
+                        <RoleBadge role={m.role} />
                       </TableCell>
                       <TableCell>
-                        {m.is_active ? (
-                          <Badge variant='secondary'>ACTIVE</Badge>
-                        ) : (
-                          <Badge variant='outline'>INACTIVE</Badge>
-                        )}
+                        <StatusIndicator isActive={m.is_active} />
                       </TableCell>
                       <TableCell className='text-right'>
                         <DropdownMenu>
