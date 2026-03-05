@@ -505,7 +505,7 @@ export default function ForecastAccuracyPage() {
 
       {/* 3. Secondary KPI Grid (Volumes) */}
       <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="shadow-sm border-slate-200/60 bg-slate-900 text-white">
+        {/* <Card className="shadow-sm border-slate-200/60 bg-slate-900 text-white">
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-2 text-slate-400 font-medium">
               <Target className="h-4 w-4 text-indigo-400" /> Actual Demand
@@ -514,7 +514,7 @@ export default function ForecastAccuracyPage() {
               {fmt(dashboard.kpis.totalActualDemandQty)}
             </CardTitle>
           </CardHeader>
-        </Card>
+        </Card> */}
 
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-2">
@@ -554,7 +554,7 @@ export default function ForecastAccuracyPage() {
       </div>
 
       {/* 4. Charts Section */}
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card className="xl:col-span-2 shadow-sm border-slate-200/60 flex flex-col">
           <CardHeader className="pb-2 border-b border-slate-100/50">
             <CardTitle className="text-base font-semibold text-slate-900">Daily Accuracy Trend</CardTitle>
@@ -582,7 +582,7 @@ export default function ForecastAccuracyPage() {
         </Card>
 
         {/* Informational Sidebar */}
-        <Card className="shadow-sm border-slate-200/60 bg-slate-900 text-slate-300 flex flex-col justify-between">
+        {/* <Card className="shadow-sm border-slate-200/60 bg-slate-900 text-slate-300 flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
               <Info className="h-5 w-5 text-indigo-400" />
@@ -603,7 +603,7 @@ export default function ForecastAccuracyPage() {
               Aggregated from <code className="text-xs text-slate-300 bg-slate-950/50 px-1 py-0.5 rounded">PAID</code> sale items, grouped by date and menu item.
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">

@@ -1385,7 +1385,7 @@ export default function KitchenPage() {
                     Production Schedule
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-2">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -2216,7 +2216,7 @@ export default function KitchenPage() {
                 <CardHeader className="py-4 flex flex-row items-center justify-between">
                   <CardTitle className="text-base">Waste Log</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-2">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/40">

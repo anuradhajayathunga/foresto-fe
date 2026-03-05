@@ -290,7 +290,7 @@ export default function TeamUsersPage() {
   }
 
   function RoleBadge({ role }: { role: TeamRole }) {
-    let classes = "bg-slate-100 text-slate-700 border-slate-200"; // default (STAFF/VIEWER)
+    let classes = "bg-slate-100 text-slate-700 border-slate-200 text-sm"; // default (STAFF/VIEWER)
 
     if (role === "OWNER" || role === "ADMIN") {
       classes = "bg-indigo-50 text-indigo-700 border-indigo-200";
