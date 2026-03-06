@@ -1,23 +1,18 @@
 import {
-  Home,
-  UtensilsCrossed,
-  ShoppingCart,
-  Users,
-  BarChart3,
   Settings,
   Package,
   Receipt,
   ChefHat,
-  Shield,
-  UserCog,
+  Users,
   LayoutDashboard,
   ClipboardList,
   CookingPot,
-  icons,
   Truck,
   Utensils,
-  Sparkle,
   Sparkles,
+  Store,
+  Tablet,
+  ShoppingBag, 
 } from "lucide-react";
 
 interface NavItem {
@@ -37,48 +32,38 @@ interface NavSection {
 
 export const NAV_DATA: NavSection[] = [
   {
-    label: "MAIN",
+    label: "",//Overview
     items: [
-      {
-        title: "Dashboard",
-        url: "/dashboard",
-        icon: LayoutDashboard,
-        items: [],
-      },
-      { title: "POS", url: "/sales", icon: Receipt, items: [] },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, items: [] },
+      { title: "Point of Sale", url: "/sales", icon: ShoppingBag, items: [] }, 
     ],
   },
   {
-    label: "RESTAURANT",
+    label: "Operations",
     items: [
-      { title: "Menu", url: "/menu", icon: Utensils, items: [] },
-      { title: "Kitchen", url: "/kitchen", icon: ChefHat, items: [] },
+      { title: "Menus", url: "/menu", icon: Utensils, items: [] },
       { title: "Recipes", url: "/recipes", icon: CookingPot, items: [] },
-      { title: "Inventory", url: "/inventory", icon: Package, items: [] },
+      { title: "Kitchen Prep", url: "/kitchen", icon: ChefHat, items: [] },
     ],
   },
   {
-    label: "PROCUREMENT",
+    label: "Supply Chain",
     items: [
-      { title: "Purchases", url: "/purchases", icon: ClipboardList, items: [] },
+      { title: "Inventory", url: "/inventory", icon: Package, items: [] },
+      { title: "Purchase Orders", url: "/purchases", icon: ClipboardList, items: [] },
       { title: "Suppliers", url: "/suppliers", icon: Truck, items: [] },
     ],
   },
   {
-    label: "INSIGHTS",
+    label: "Analytics & Intelligence",
     items: [
-      {
-        title: "AI Forecasting",
-        url: "/forecasting",
-        icon: Sparkles,
-        items: [],
-      },
+      { title: "AI Forecast", url: "/forecasting", icon: Sparkles, items: [] },
     ],
   },
   {
-    label: "SETTINGS",
+    label: "Administration",
     items: [
-      { title: "Staff & Users", url: "/team", icon: Users, items: [] },
+      { title: "Team & Roles", url: "/team", icon: Users, items: [] },
       { title: "Settings", url: "/settings", icon: Settings, items: [] },
     ],
   },
