@@ -837,7 +837,7 @@ export default function KitchenPage() {
     items.find((item) => String(item.id) === prodMenuItem)?.name || "-";
 
   return (
-    <div className="min-h-screen w-full bg-muted/30 p-6 md:p-8 space-y-8">
+    <div className=" w-full bg-muted/30 p-6 md:p-8 space-y-8">
       {/* 1. Header & Controls */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
@@ -1815,7 +1815,7 @@ export default function KitchenPage() {
                 </div>
               </CardContent>
             </Card> */}
-            {/* --- Replaced Side-Sheet with Pop-up Dialog --- */}
+            {/* ---  Side-Sheet with Pop-up Dialog --- */}
             <Dialog
               open={productionAlertSheetOpen}
               onOpenChange={setProductionAlertSheetOpen}
@@ -2118,7 +2118,7 @@ export default function KitchenPage() {
               />
             )}
 
-            {/* Waste Form (Left Column) */}
+            {/* Waste Form */}
             <Card
               className={`fixed top-0 z-50 h-screen w-full max-w-xl overflow-y-auto rounded-none shadow-xl transition-transform duration-300 ${
                 wasteFormSide === "right"

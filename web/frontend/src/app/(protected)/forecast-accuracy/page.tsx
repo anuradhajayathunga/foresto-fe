@@ -171,7 +171,7 @@ function calcAccuracy(referenceQty: number | null, actualQty: number): number | 
 
 // Custom modern badge for percentages
 function percentBadge(value: number | null) {
-  if (value == null) return <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-medium">N/A</Badge>;
+  if (value == null) return <Badge variant="secondary" className="bg-slate-100  font-medium">N/A</Badge>;
   if (value >= 90) {
     return <Badge className="bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 hover:bg-emerald-50 font-medium">{pct(value)}</Badge>;
   }
@@ -314,15 +314,15 @@ function buildDashboardData(
 const CustomChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-slate-200 p-3 rounded-lg shadow-xl text-xs min-w-[150px]">
-        <p className="font-semibold text-slate-900 mb-2 pb-2 border-b border-slate-100">{label}</p>
+      <div className=" border border-slate-200 p-3 rounded-lg shadow-xl text-xs min-w-[150px]">
+        <p className="font-semibold  mb-2 pb-2 border-b border-slate-100">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={index} className="flex items-center justify-between gap-4 mb-1.5 last:mb-0">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-slate-500 font-medium">{entry.name}</span>
+              <span className=" font-medium">{entry.name}</span>
             </div>
-            <span className="font-mono font-medium text-slate-900">
+            <span className="font-mono font-medium ">
               {entry.value ? `${entry.value.toFixed(1)}` : '-'}
             </span>
           </div>
@@ -388,38 +388,38 @@ export default function ForecastAccuracyPage() {
   const trendData = useMemo(() => dashboard.charts.accuracyTrend.slice(-30), [dashboard.charts.accuracyTrend]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-8 font-sans">
+    <div className="min-h-screen p-6 md:p-8 space-y-8 font-sans">
       
       {/* 1. Header & Global Controls */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Forecast Accuracy</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-3xl font-bold tracking-tight ">Forecast Accuracy</h1>
+          <p className="text-sm ">
             Compare predictions against actual demand to optimize kitchen production.
           </p>
         </div>
         
         {/* Sleek Date Range Control Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center  p-1.5 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 px-3 border-r border-slate-100">
             <CalendarRange className="h-4 w-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-600 hidden sm:inline">Range:</span>
           </div>
           <div className="flex items-center gap-2">
-            <Input type="date" className="h-8 w-36 bg-slate-50 border-slate-200 text-sm focus-visible:ring-offset-0" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <Input type="date" className="h-8 w-36  border-slate-200 text-sm focus-visible:ring-offset-0" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             <span className="text-slate-400">—</span>
-            <Input type="date" className="h-8 w-36 bg-slate-50 border-slate-200 text-sm focus-visible:ring-offset-0" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <Input type="date" className="h-8 w-36  border-slate-200 text-sm focus-visible:ring-offset-0" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
           
           {/* Quick Filters */}
           <div className="hidden md:flex items-center gap-1 border-l border-slate-100 pl-2">
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500 hover:text-slate-900" onClick={() => { setDateFrom(daysAgoISO(6)); setDateTo(todayISO()); }}>7D</Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500 hover:text-slate-900" onClick={() => { setDateFrom(daysAgoISO(29)); setDateTo(todayISO()); }}>30D</Button>
+            <Button variant="ghost" size="sm" className="h-8 text-xs  " onClick={() => { setDateFrom(daysAgoISO(6)); setDateTo(todayISO()); }}>7D</Button>
+            <Button variant="ghost" size="sm" className="h-8 text-xs  " onClick={() => { setDateFrom(daysAgoISO(29)); setDateTo(todayISO()); }}>30D</Button>
           </div>
 
           <div className="w-px h-6 bg-slate-200 hidden sm:block mx-1" />
           
-          <Button variant="ghost" size="sm" className="h-8 gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100" onClick={() => void loadData()} disabled={loading}>
+          <Button variant="ghost" size="sm" className="h-8 gap-2 text-slate-600  hover:bg-slate-100" onClick={() => void loadData()} disabled={loading}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             <span className="sr-only sm:not-sr-only">Refresh</span>
           </Button>
@@ -434,69 +434,69 @@ export default function ForecastAccuracyPage() {
 
       {/* 2. Primary KPI Grid (Percentages) */}
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-indigo-500/10 transition-all bg-white">
+        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-indigo-500/10 transition-all ">
           <CardContent className="p-5">
              <div className="flex items-center justify-between mb-4">
-               <h3 className="text-sm font-medium text-slate-500">Forecast Accuracy</h3>
+               <h3 className="text-sm font-medium ">Forecast Accuracy</h3>
                <div className='p-1.5 bg-indigo-50 rounded-md ring-1 ring-indigo-100'>
                   <Target className='h-4 w-4 text-indigo-600' />
                </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            <div className="text-3xl font-bold  tabular-nums tracking-tight">
               {pct(dashboard.kpis.avgForecastAccuracyPct)}
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-medium">
+            <p className="text-xs  mt-2 font-medium">
               Coverage: {pct(dashboard.kpis.forecastCoveragePct)} ({dashboard.kpis.forecastCoverageCount} rows)
             </p>
           </CardContent>
         </Card>
         
-        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-emerald-500/10 transition-all bg-white">
+        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-emerald-500/10 transition-all ">
           <CardContent className="p-5">
              <div className="flex items-center justify-between mb-4">
-               <h3 className="text-sm font-medium text-slate-500">Plan Accuracy</h3>
+               <h3 className="text-sm font-medium ">Plan Accuracy</h3>
                <div className='p-1.5 bg-emerald-50 rounded-md ring-1 ring-emerald-100'>
                   <ClipboardList className='h-4 w-4 text-emerald-600' />
                </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            <div className="text-3xl font-bold  tabular-nums tracking-tight">
               {pct(dashboard.kpis.avgPlanAccuracyPct)}
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-medium">
+            <p className="text-xs  mt-2 font-medium">
               Planned vs actual demand
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-blue-500/10 transition-all bg-white">
+        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-blue-500/10 transition-all ">
           <CardContent className="p-5">
              <div className="flex items-center justify-between mb-4">
-               <h3 className="text-sm font-medium text-slate-500">Avg Sell-Through</h3>
+               <h3 className="text-sm font-medium ">Avg Sell-Through</h3>
                <div className='p-1.5 bg-blue-50 rounded-md ring-1 ring-blue-100'>
                   <Activity className='h-4 w-4 text-blue-600' />
                </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            <div className="text-3xl font-bold  tabular-nums tracking-tight">
               {pct(dashboard.kpis.avgSellThroughPct)}
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-medium">
+            <p className="text-xs  mt-2 font-medium">
               Units sold vs units prepared
             </p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-slate-300 transition-all bg-white">
+        <Card className="shadow-sm border-slate-200/60 ring-1 ring-transparent hover:ring-slate-300 transition-all ">
           <CardContent className="p-5">
              <div className="flex items-center justify-between mb-4">
-               <h3 className="text-sm font-medium text-slate-500">Records Analyzed</h3>
+               <h3 className="text-sm font-medium ">Records Analyzed</h3>
                <div className='p-1.5 bg-slate-100 rounded-md ring-1 ring-slate-200'>
                   <Layers className='h-4 w-4 text-slate-600' />
                </div>
             </div>
-            <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            <div className="text-3xl font-bold  tabular-nums tracking-tight">
               {dashboard.kpis.rowCount}
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-medium">
+            <p className="text-xs  mt-2 font-medium">
               Date + menu item combinations
             </p>
           </CardContent>
@@ -518,10 +518,10 @@ export default function ForecastAccuracyPage() {
 
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 text-slate-500 font-medium">
+            <CardDescription className="flex items-center gap-2  font-medium">
               <ShoppingCart className="h-4 w-4 text-emerald-500" /> Units Sold
             </CardDescription>
-            <CardTitle className="text-3xl font-bold tracking-tight text-slate-900">
+            <CardTitle className="text-3xl font-bold tracking-tight ">
               {fmt(dashboard.kpis.totalSoldQty)}
             </CardTitle>
           </CardHeader>
@@ -529,10 +529,10 @@ export default function ForecastAccuracyPage() {
 
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 text-slate-500 font-medium">
+            <CardDescription className="flex items-center gap-2  font-medium">
               <Trash2 className="h-4 w-4 text-rose-500" /> Waste Qty
             </CardDescription>
-            <CardTitle className="text-3xl font-bold tracking-tight text-slate-900">
+            <CardTitle className="text-3xl font-bold tracking-tight ">
               {fmt(dashboard.kpis.totalWasteQty)}
             </CardTitle>
           </CardHeader>
@@ -557,8 +557,8 @@ export default function ForecastAccuracyPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="xl:col-span-2 shadow-sm border-slate-200/60 flex flex-col">
           <CardHeader className="pb-2 border-b border-slate-100/50">
-            <CardTitle className="text-base font-semibold text-slate-900">Daily Accuracy Trend</CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-1">
+            <CardTitle className="text-base font-semibold ">Daily Accuracy Trend</CardTitle>
+            <CardDescription className="text-xs  mt-1">
               Average forecast vs. planned accuracy over the selected period.
             </CardDescription>
           </CardHeader>
@@ -609,10 +609,10 @@ export default function ForecastAccuracyPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-4 border-b border-slate-100/50">
-            <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+            <CardTitle className="text-base font-semibold  flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-rose-500" /> Worst Forecast Misses
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-1">Top 10 highest absolute errors (Forecast vs Actual)</CardDescription>
+            <CardDescription className="text-xs  mt-1">Top 10 highest absolute errors (Forecast vs Actual)</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {dashboard.charts.worstForecastRows.length === 0 ? (
@@ -635,10 +635,10 @@ export default function ForecastAccuracyPage() {
 
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-4 border-b border-slate-100/50">
-             <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+             <CardTitle className="text-base font-semibold  flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-amber-500" /> Worst Plan Misses
             </CardTitle>
-            <CardDescription className="text-xs text-slate-500 mt-1">Top 10 highest absolute errors (Planned vs Actual)</CardDescription>
+            <CardDescription className="text-xs  mt-1">Top 10 highest absolute errors (Planned vs Actual)</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {dashboard.charts.worstPlanRows.length === 0 ? (
@@ -663,27 +663,27 @@ export default function ForecastAccuracyPage() {
       {/* 5. Data Grid Section */}
       <Card className="shadow-sm border-slate-200/60 overflow-hidden">
         {/* Table Toolbar */}
-        <div className="border-b border-slate-200 bg-white p-5 lg:p-6">
+        <div className="border-b border-slate-200  p-5 lg:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <CardTitle className="text-lg font-semibold text-slate-900">Analysis Data Grid</CardTitle>
+              <CardTitle className="text-lg font-semibold ">Analysis Data Grid</CardTitle>
               <CardDescription className="text-sm mt-1">
                 Line-by-line breakdown of {filteredRows.length} aggregated records.
               </CardDescription>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+            <div className="flex flex-wrap items-center gap-3  p-1.5 rounded-lg border border-slate-200">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                 <Input 
                   placeholder="Search item or date..." 
                   value={search} 
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 bg-white border-slate-200 shadow-sm text-sm focus-visible:ring-offset-0" 
+                  className="pl-9 h-9  border-slate-200 shadow-sm text-sm focus-visible:ring-offset-0" 
                 />
               </div>
               <Select value={coverageFilter} onValueChange={(v) => setCoverageFilter(v as CoverageFilter)}>
-                <SelectTrigger className="h-9 w-full sm:w-[150px] bg-white text-xs border-slate-200 shadow-sm focus:ring-offset-0">
+                <SelectTrigger className="h-9 w-full sm:w-[150px]  text-xs border-slate-200 shadow-sm focus:ring-offset-0">
                   <SelectValue placeholder="Coverage" />
                 </SelectTrigger>
                 <SelectContent>
@@ -697,24 +697,24 @@ export default function ForecastAccuracyPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50/80">
+          <Table className="">
+            <TableHeader className="p-2">
               <TableRow className="border-b border-slate-200 hover:bg-transparent">
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Date</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Item Details</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-right">Forecast</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-right">Planned</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-right">Prepared</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-right">Sold</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-right">Waste</TableHead>
-                <TableHead className="text-xs font-bold uppercase text-slate-700 tracking-wider text-right bg-slate-100/50">Actual</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-center">F-Acc</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-center">P-Acc</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-center">Sell-Thru</TableHead>
-                <TableHead className="text-xs font-semibold uppercase text-slate-500 tracking-wider text-center pr-6">Variance</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider">Date</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider">Item Details</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-right">Forecast</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-right">Planned</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-right">Prepared</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-right">Sold</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-right">Waste</TableHead>
+                <TableHead className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider text-right ">Actual</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-center">F-Acc</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-center">P-Acc</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-center">Sell-Thru</TableHead>
+                <TableHead className="text-xs font-semibold uppercase  tracking-wider text-center pr-6">Variance</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="bg-white">
+            <TableBody className="">
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={12} className="h-32 text-center">
@@ -723,16 +723,16 @@ export default function ForecastAccuracyPage() {
                 </TableRow>
               ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="h-32 text-center text-sm text-slate-500">
+                  <TableCell colSpan={12} className="h-32 text-center text-sm ">
                     No data matches your current filters.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredRows.map((row) => (
-                  <TableRow key={row.key} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-100">
+                  <TableRow key={row.key} className="hover:/50 transition-colors group border-b border-slate-100">
                     <TableCell className="font-medium text-slate-600 text-sm whitespace-nowrap">{row.date}</TableCell>
                     <TableCell>
-                      <div className="font-medium text-slate-900 text-sm">{row.menu_item_name}</div>
+                      <div className="font-medium  text-sm">{row.menu_item_name}</div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5 tracking-tight uppercase">
                         ID:{row.menu_item_id} • P:{row.production_row_count} • S:{row.sales_line_count} • W:{row.waste_entry_count}
                       </div>
@@ -742,7 +742,7 @@ export default function ForecastAccuracyPage() {
                     <TableCell className="text-right tabular-nums text-sm text-slate-600">{fmt(row.prepared_qty)}</TableCell>
                     <TableCell className="text-right tabular-nums text-sm text-emerald-600 font-medium">{fmt(row.sold_qty)}</TableCell>
                     <TableCell className="text-right tabular-nums text-sm text-rose-600 font-medium">{fmt(row.waste_qty)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-sm font-bold text-slate-900 bg-slate-50/50 group-hover:bg-transparent">{fmt(row.actual_demand_qty)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-sm font-bold group-hover:bg-transparent bg-slate-100/50 dark:bg-slate-800">{fmt(row.actual_demand_qty)}</TableCell>
                     <TableCell className="text-center">{percentBadge(row.forecast_accuracy_pct)}</TableCell>
                     <TableCell className="text-center">{percentBadge(row.plan_accuracy_pct)}</TableCell>
                     <TableCell className="text-center">{percentBadge(row.sell_through_pct)}</TableCell>

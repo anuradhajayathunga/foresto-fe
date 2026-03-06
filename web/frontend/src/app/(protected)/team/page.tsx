@@ -290,10 +290,10 @@ export default function TeamUsersPage() {
   }
 
   function RoleBadge({ role }: { role: TeamRole }) {
-    let classes = "bg-slate-100 text-slate-700 border-slate-200 text-sm"; // default (STAFF/VIEWER)
+    let classes = "bg-slate-100 text-slate-700 border-slate-200"; 
 
     if (role === "OWNER" || role === "ADMIN") {
-      classes = "bg-indigo-50 text-indigo-700 border-indigo-200";
+      classes = "bg-amber-50 text-amber-700 border-amber-200";
     } else if (role === "MANAGER") {
       classes = "bg-blue-50 text-blue-700 border-blue-200";
     }
@@ -309,7 +309,7 @@ export default function TeamUsersPage() {
 
   function StatusIndicator({ isActive }: { isActive?: boolean }) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0">
         <span className="relative flex h-2 w-2">
           {isActive && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-20"></span>
@@ -321,7 +321,7 @@ export default function TeamUsersPage() {
           ></span>
         </span>
         <span
-          className={`text-sm font-medium ${isActive ? "text-slate-700" : "text-slate-500"}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium ${isActive ? "text-slate-700" : "text-slate-500"}`}
         >
           {isActive ? "Active" : "Inactive"}
         </span>
