@@ -1,6 +1,11 @@
 import { cn } from '@/lib/utils';
 import { formatMessageTime } from '@/lib/format-message-time';
-import { ShoppingCart, Leaf, Package, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { 
+  ShoppingCart, 
+  Leaf, 
+  Package, 
+  ActivitySquare 
+} from 'lucide-react';
 
 export type ActivityItem = {
   id: string;
@@ -16,38 +21,39 @@ type Props = {
   className?: string;
 };
 
+// --- Modernized Configs ---
 const typeConfig = {
   sale: {
     Icon: ShoppingCart,
-    bg: 'bg-blue-50 dark:bg-blue-950/30',
-    color: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+    color: 'text-indigo-600 dark:text-indigo-400',
+    ring: 'ring-indigo-100 dark:ring-indigo-500/20'
   },
   production: {
     Icon: Leaf,
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+    bg: 'bg-emerald-50 dark:bg-emerald-500/10',
     color: 'text-emerald-600 dark:text-emerald-400',
+    ring: 'ring-emerald-100 dark:ring-emerald-500/20'
   },
   inventory: {
     Icon: Package,
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
+    bg: 'bg-amber-50 dark:bg-amber-500/10',
     color: 'text-amber-600 dark:text-amber-400',
+    ring: 'ring-amber-100 dark:ring-amber-500/20'
   },
 };
 
 const statusConfig = {
   completed: {
-    Icon: CheckCircle2,
-    color: 'text-emerald-500',
+    badge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-500/20',
     label: 'Completed',
   },
   pending: {
-    Icon: Clock,
-    color: 'text-blue-500',
+    badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 ring-slate-200 dark:ring-slate-700',
     label: 'Pending',
   },
   warning: {
-    Icon: AlertTriangle,
-    color: 'text-amber-500',
+    badge: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 ring-rose-200 dark:ring-rose-500/20',
     label: 'Warning',
   },
 };
@@ -56,57 +62,80 @@ export function ActivityList({ items, className }: Props) {
   return (
     <div
       className={cn(
-        'rounded-[10px] bg-white p-6 shadow-1 dark:bg-gray-dark dark:shadow-card',
+        'flex flex-col ',
         className,
       )}
     >
-      <h2 className='mb-5 text-body-2xlg font-bold text-dark dark:text-white'>
-        Recent Activity
-      </h2>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800/60">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          Recent Activity
+        </h2>
+      </div>
 
+      {/* Content */}
       {items.length === 0 ? (
-        <p className='text-sm text-muted-foreground'>No recent activity.</p>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 mb-3">
+             <ActivitySquare className="h-6 w-6 text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-200">No recent activity</p>
+          <p className="text-xs text-slate-500 mt-1">Actions and events will appear here.</p>
+        </div>
       ) : (
-        <ul className='space-y-3'>
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
           {items.map((item) => {
-            const { Icon: TypeIcon, bg, color } = typeConfig[item.type];
-            const { Icon: StatusIcon, color: statusColor, label: statusLabel } =
-              statusConfig[item.status];
+            const { Icon: TypeIcon, bg, color, ring } = typeConfig[item.type];
+            const { badge: statusBadge, label: statusLabel } = statusConfig[item.status];
 
             return (
               <li
                 key={item.id}
-                className='flex items-center gap-4 rounded-lg border border-border/50 bg-gray-1 px-4 py-3 dark:bg-dark-2'
+                className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/50 group"
               >
-                {/* Type icon */}
-                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', bg)}>
-                  <TypeIcon className={cn('h-5 w-5', color)} />
+                {/* Icon Wrapper */}
+                <div className={cn('mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1', bg, ring)}>
+                  <TypeIcon className={cn('h-4 w-4', color)} strokeWidth={2.5} />
                 </div>
 
-                {/* Content */}
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate text-sm font-medium text-dark dark:text-white'>
+                {/* Details */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                     {item.title}
                   </p>
-                  <p className='truncate text-xs text-muted-foreground'>
+                  <p className="truncate text-xs text-slate-500 mt-0.5">
                     {item.description}
                   </p>
                 </div>
 
-                {/* Status + time */}
-                <div className='flex shrink-0 flex-col items-end gap-1'>
-                  <div className={cn('flex items-center gap-1 text-xs font-medium', statusColor)}>
-                    <StatusIcon className='h-3.5 w-3.5' />
-                    <span>{statusLabel}</span>
-                  </div>
-                  <time className='text-xs text-muted-foreground' dateTime={item.timestamp}>
+                {/* Metadata (Time & Status) */}
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <time 
+                    className="text-[11px] font-medium text-slate-400 group-hover:text-slate-500 dark:text-slate-500 transition-colors" 
+                    dateTime={item.timestamp}
+                  >
                     {formatMessageTime(item.timestamp)}
                   </time>
+                  <span className={cn(
+                    'inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset',
+                    statusBadge
+                  )}>
+                    {statusLabel}
+                  </span>
                 </div>
               </li>
             );
           })}
         </ul>
+      )}
+      
+      {/* Optional Footer Link */}
+      {items.length > 0 && (
+        <div className="border-t border-slate-100 p-3 dark:border-slate-800/60">
+           <button className="w-full rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 transition-colors">
+             View all activity
+           </button>
+        </div>
       )}
     </div>
   );
