@@ -1,29 +1,29 @@
-'use client';
+"use client";
 
-import { ChevronUpIcon } from '@/assets/icons';
+import { ChevronUpIcon } from "@/assets/icons";
 import {
   Dropdown,
   DropdownContent,
   DropdownTrigger,
-} from '@/components/ui/dropdown';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { LogOutIcon, SettingsIcon, UserIcon } from './icons';
-import { useRouter } from 'next/navigation';
-import { useAuth, type User } from '@/hooks/useAuthToken';
-import toast from 'react-hot-toast';
-import { clearTokens } from '@/lib/auth';
+} from "@/components/ui/dropdown";
+import { cn } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { LogOutIcon, SettingsIcon, UserIcon } from "./icons";
+import { useRouter } from "next/navigation";
+import { useAuth, type User } from "@/hooks/useAuthToken";
+import toast from "react-hot-toast";
+import { clearTokens } from "@/lib/auth";
 
 function UserInfoSkeleton() {
   return (
-    <div className='flex items-center justify-end gap-3'>
-      <div className='hidden items-end max-[1024px]:sr-only lg:flex flex-col gap-2'>
-        <div className='h-2 w-20 rounded bg-slate-200 dark:bg-slate-600 animate-pulse' />
-        <div className='h-2 w-16 rounded bg-slate-300 dark:bg-slate-700 animate-pulse' />
-      </div>
-      <div className='h-12 w-12 rounded-full bg-slate-300 dark:bg-slate-700 animate-pulse' />
+    <div className="flex items-center justify-end gap-3">
+      {/* <div className="hidden items-end max-[1024px]:sr-only lg:flex flex-col gap-2">
+        <div className="h-2 w-20 rounded bg-slate-200 dark:bg-slate-600 animate-pulse" />
+        <div className="h-2 w-16 rounded bg-slate-300 dark:bg-slate-700 animate-pulse" />
+      </div> */}
+      <div className="h-12 w-12 rounded-full bg-slate-300 dark:bg-slate-700 animate-pulse" />
     </div>
   );
 }
@@ -34,27 +34,27 @@ export function UserInfo() {
   const { user, loading: authLoading } = useAuth();
 
   const USER = {
-    name: 'John Smith',
-    email: 'johnson@nextadmin.com',
-    img: '/images/user/user-03.png',
+    name: "John Smith",
+    email: "johnson@nextadmin.com",
+    img: "/images/user/user-03.png",
   };
 
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [authLoading, user, router]);
 
   const handleLogout = () => {
     // Clear tokens (or whatever you stored on login)
     try {
-      clearTokens(); 
+      clearTokens();
       setIsOpen(false);
-      toast.success('Logged out successfully.');
-      router.push('/login');
+      toast.success("Logged out successfully.");
+      router.push("/login");
     } catch (e) {
-      console.error('Error clearing auth tokens', e);
+      console.error("Error clearing auth tokens", e);
     }
   };
 
@@ -64,25 +64,25 @@ export function UserInfo() {
 
   return (
     <Dropdown isOpen={isOpen} setIsOpen={setIsOpen}>
-      <DropdownTrigger className='rounded align-middle outline-none ring-primary ring-offset-2 focus-visible:ring-1 dark:ring-offset-gray-dark'>
-        <span className='sr-only'>My Account</span>
+      <DropdownTrigger className="rounded align-middle outline-none ring-primary ring-offset-2 focus-visible:ring-1 dark:ring-offset-gray-dark">
+        <span className="sr-only">My Account</span>
 
-        <figure className='flex items-center gap-3'>
-          <figcaption className='flex flex-col items-end leading-tight max-[1024px]:hidden'>
+        <figure className="flex items-center gap-3">
+          {/* <figcaption className='flex flex-col items-end leading-tight max-[1024px]:hidden'>
             <span className='text-[11px] font-medium capitalize tracking-wide text-slate-500 dark:text-slate-400'>
               Welcome back,
             </span>
             <span className='text-sm font-semibold text-slate-900 dark:text-slate-50 capitalize truncate max-w-[120px]'>
               {user?.username}
             </span>
-          </figcaption>
+          </figcaption> */}
 
-          <div className='relative'>
+          <div className="relative">
             <Image
               src={USER.img}
-              className='size-12 rounded-full border border-slate-200 object-cover dark:border-slate-700'
+              className="size-15 rounded-full border border-slate-200 object-cover dark:border-slate-700"
               alt={`Avatar of ${user?.username}`}
-              role='presentation'
+              role="presentation"
               width={200}
               height={200}
             />
@@ -95,66 +95,66 @@ export function UserInfo() {
       </DropdownTrigger>
 
       <DropdownContent
-        className=' border border-stroke bg-white shadow-md dark:border-dark-3 dark:bg-gray-dark min-[230px]:min-w-[19rem] py-2'
-        align='end'
+        className=" border border-stroke bg-white shadow-md dark:border-dark-3 dark:bg-gray-dark min-[230px]:min-w-[19rem] py-2"
+        align="end"
       >
-        <h2 className='sr-only'>User information</h2>
+        <h2 className="sr-only">User information</h2>
 
-        <figure className='flex items-center gap-2.5 px-5 py-3.5'>
+        <figure className="flex items-center gap-2.5 px-5 py-3.5">
           <Image
             src={USER.img}
-            className='size-12'
+            className="size-12"
             alt={`Avatar for ${user?.username}`}
-            role='presentation'
+            role="presentation"
             width={200}
             height={200}
           />
 
-          <figcaption className='space-y-1 text-base font-medium'>
-            <div className='mb-2 leading-none text-dark dark:text-white capitalize'>
+          <figcaption className="space-y-1 text-base font-medium">
+            <div className="mb-2 leading-none text-dark dark:text-white capitalize">
               {user?.username}
             </div>
 
-            <div className='leading-none text-gray-6 text-sm'>
+            <div className="leading-none text-gray-6 text-sm">
               {user?.email}
             </div>
           </figcaption>
         </figure>
 
-        <hr className='border-[#E8E8E8] dark:border-dark-3' />
+        <hr className="border-[#E8E8E8] dark:border-dark-3" />
 
-        <div className='p-2 text-base text-[#4B5563] dark:text-dark-6 [&>*]:cursor-pointer'>
+        <div className="p-2 text-base text-[#4B5563] dark:text-dark-6 [&>*]:cursor-pointer">
           <Link
-            href={'/profile'}
+            href={"/profile"}
             onClick={() => setIsOpen(false)}
-            className='flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white'
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
           >
             <UserIcon />
-            <span className='mr-auto text-base font-medium'>View profile</span>
+            <span className="mr-auto text-base font-medium">View profile</span>
           </Link>
 
           <Link
-            href={'/settings'}
+            href={"/settings"}
             onClick={() => setIsOpen(false)}
-            className='flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white'
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
           >
             <SettingsIcon />
-            <span className='mr-auto text-base font-medium'>
+            <span className="mr-auto text-base font-medium">
               Account Settings
             </span>
           </Link>
         </div>
 
-        <hr className='border-[#E8E8E8] dark:border-dark-3' />
+        <hr className="border-[#E8E8E8] dark:border-dark-3" />
 
-        <div className='p-2 text-base text-[#4B5563] dark:text-dark-6'>
+        <div className="p-2 text-base text-[#4B5563] dark:text-dark-6">
           <button
-            type='button'
-            className='flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white cursor-pointer'
+            type="button"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white cursor-pointer"
             onClick={handleLogout}
           >
             <LogOutIcon />
-            <span className='text-base font-medium'>Log out</span>
+            <span className="text-base font-medium">Log out</span>
           </button>
         </div>
       </DropdownContent>

@@ -2,29 +2,24 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { useAuth } from "@/hooks/useAuthToken";
+import { Calendar } from "lucide-react";
 
 interface DashboardHeaderProps {
-  userName?: string;
   children?: ReactNode;
   className?: string;
-  illustration?: string;
-  darkIllustration?: string;
-  showIllustration?: boolean;
 }
 
 export function DashboardHeader({
-  userName,
   children,
   className,
-  illustration = "/images/illustration/Business Plan.svg",
-  darkIllustration = "/images/illustration/Business Plan Dark.svg",
-  showIllustration = true,
 }: DashboardHeaderProps) {
+  const { user } = useAuth();
   const [greeting, setGreeting] = useState("Welcome");
   const [dateStr, setDateStr] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+
+  const displayName = user?.first_name || user?.username;
 
   useEffect(() => {
     setMounted(true);
@@ -43,118 +38,84 @@ export function DashboardHeader({
         day: "numeric",
       }),
     );
-
-    const checkDarkMode = () => {
-      const isDarkMode = document.documentElement.classList.contains("dark");
-      setIsDark(isDarkMode);
-    };
-
-    checkDarkMode();
-
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleMediaChange = (e: MediaQueryListEvent) => {
-      if (!document.documentElement.classList.contains("dark")) {
-        setIsDark(e.matches);
-      }
-    };
-    mediaQuery.addEventListener("change", handleMediaChange);
-
-    return () => {
-      observer.disconnect();
-      mediaQuery.removeEventListener("change", handleMediaChange);
-    };
   }, []);
-
-  const currentIllustration = isDark ? darkIllustration : illustration;
 
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-xl ring-1 ring-inset ring-slate-200/50 dark:ring-slate-800/50 shadow-sm",
-        "bg-white dark:bg-slate-950",
+        "relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-xl p-6 sm:p-8 shadow-sm transition-all dark:border-slate-800/80 dark:bg-slate-950/60",
         className,
       )}
     >
-      {/* --- Background Layer --- */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800" />
-
-      {/* Decorative Background Elements */}
+      {/* --- Subtle SaaS Background Accents --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] -translate-y-1/2 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[80px]" />
+        {/* Soft dual-tone radial glows */}
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] dark:bg-primary/20" />
+        <div className="absolute -bottom-32 left-1/4 h-64 w-64 rounded-full bg-blue-500/5 blur-[80px] dark:bg-blue-500/10" />
+
+        {/* Minimalist Tech Dot Matrix fading out */}
         <svg
-          className="absolute inset-0 w-full h-full opacity-[0.4] dark:opacity-[0.2]"
+          className="absolute right-0 top-0 h-full w-2/3 opacity-[0.15] dark:opacity-[0.07]"
           style={{
-            maskImage: "linear-gradient(to bottom, white, transparent)",
+            maskImage: "linear-gradient(to left, white, transparent)",
+            WebkitMaskImage: "linear-gradient(to left, white, transparent)",
           }}
         >
           <defs>
             <pattern
-              id="dot-pattern"
-              width="16"
-              height="16"
+              id="dashboard-dots"
+              width="20"
+              height="20"
               patternUnits="userSpaceOnUse"
             >
               <circle
-                cx="1.5"
-                cy="1.5"
-                r="1.5"
-                className="fill-slate-300 dark:fill-slate-700"
+                cx="2"
+                cy="2"
+                r="1"
+                className="fill-slate-800 dark:fill-slate-200"
               />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#dot-pattern)" />
+          <rect width="100%" height="100%" fill="url(#dashboard-dots)" />
         </svg>
       </div>
 
-      {/* Floating Illustration */}
-      {showIllustration && currentIllustration && (
-        <div className="absolute bottom-0 right-0 z-0 w-full h-full max-w-[280px] sm:max-w-[350px] lg:max-w-[400px] opacity-40 sm:opacity-90 dark:sm:opacity-80 pointer-events-none transition-opacity duration-500">
-          <Image
-            src={currentIllustration}
-            alt="Dashboard Illustration"
-            fill
-            className="object-contain object-bottom sm:object-right-bottom sm:translate-x-4 sm:translate-y-2"
-            priority
-            quality={90}
-          />
-        </div>
-      )}
-
-      {/* Content Layer */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 p-6 sm:p-8 min-h-[160px] sm:min-h-[200px]">
+      {/* --- Content Layer --- */}
+      <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        
         {/* Greeting & Date */}
-        <div className="space-y-2 max-w-xl">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50 transition-opacity duration-500">
-            {mounted ? (
-              <>
+        <div className="space-y-1.5 min-h-[60px] flex flex-col justify-center">
+          {mounted ? (
+            <>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 animate-in fade-in slide-in-from-bottom-1 duration-500">
                 {greeting}
-                {userName ? (
-                  <span className="text-indigo-600 dark:text-indigo-400">
-                    , {userName}
-                  </span>
+                {displayName ? (
+                  <>
+                    <span className="text-slate-400 dark:text-slate-500 font-medium">, </span>
+                    <span className="text-primary">{displayName}</span>
+                  </>
                 ) : (
                   ""
                 )}
-              </>
-            ) : (
-              <span className="opacity-0">Loading...</span>
-            )}
-          </h1>
+              </h1>
 
-          <p className="text-sm sm:text-base font-medium text-slate-500 dark:text-slate-400">
-            {mounted ? dateStr : ""}
-          </p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                <Calendar className="inline-block h-4 w-4 mr-2" />
+                {dateStr}
+              </p>
+            </>
+          ) : (
+            /* Professional Skeleton State */
+            <div className="space-y-3 py-1">
+              <div className="h-8 w-48 sm:w-64 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 w-32 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800/50" />
+            </div>
+          )}
         </div>
 
         {/* Action Buttons Area */}
         {children && (
-          <div className="flex flex-wrap items-center gap-3 shrink-0 mt-2 sm:mt-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             {children}
           </div>
         )}

@@ -26,11 +26,7 @@ export default async function Home({ searchParams }: PropsType) {
     <main>
       {/* Full-width Header with Cover Image */}
       <div className="w-full px-8">
-        <DashboardHeader
-          illustration="/images/illustration/Business Plan.svg"
-          darkIllustration="/images/illustration/Business Plan.svg"
-          showIllustration={true}
-        />
+        <DashboardHeader />
       </div>
 
       {/* Content Section */}
