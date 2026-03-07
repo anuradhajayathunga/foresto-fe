@@ -526,6 +526,7 @@ export default function ForecastAccuracyPage() {
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
 
   const [loading, setLoading] = useState(true);
+  const [chartsReady, setChartsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<ForecastAccuracyData>({
     rows: [],
@@ -577,6 +578,10 @@ export default function ForecastAccuracyPage() {
   useEffect(() => {
     void loadData();
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    setChartsReady(true);
+  }, []);
 
   const filteredRows = useMemo(() => {
     let rows = dashboard.rows;
@@ -837,8 +842,12 @@ export default function ForecastAccuracyPage() {
               <div className="flex items-center justify-center h-full text-sm text-slate-400">
                 No trend data available.
               </div>
+            ) : !chartsReady ? (
+              <div className="flex items-center justify-center h-full text-sm text-slate-400">
+                Preparing chart...
+              </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
                 <LineChart
                   data={trendData}
                   margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
@@ -941,9 +950,13 @@ export default function ForecastAccuracyPage() {
               <div className="flex items-center justify-center h-[280px] text-sm text-slate-400">
                 No forecast data available.
               </div>
+            ) : !chartsReady ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-slate-400">
+                Preparing chart...
+              </div>
             ) : (
               <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
                   <BarChart
                     data={dashboard.charts.worstForecastRows}
                     layout="vertical"
@@ -1006,9 +1019,13 @@ export default function ForecastAccuracyPage() {
               <div className="flex items-center justify-center h-[280px] text-sm text-slate-400">
                 No plan data available.
               </div>
+            ) : !chartsReady ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-slate-400">
+                Preparing chart...
+              </div>
             ) : (
               <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
                   <BarChart
                     data={dashboard.charts.worstPlanRows}
                     layout="vertical"

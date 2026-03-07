@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -82,6 +82,11 @@ const ReportTooltip = ({ active, payload, label }: any) => {
 
 export default function ForecastReportPage() {
   const [timeRange, setTimeRange] = useState("30d");
+  const [chartsReady, setChartsReady] = useState(false);
+
+  useEffect(() => {
+    setChartsReady(true);
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/5">
@@ -203,61 +208,67 @@ export default function ForecastReportPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={reportData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorConfidence" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis 
-                    dataKey="date" 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tickMargin={10} 
-                    fontSize={11} 
-                    tick={{ fill: '#64748b' }} 
-                  />
-                  <YAxis 
-                    tickLine={false} 
-                    axisLine={false} 
-                    fontSize={11} 
-                    tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} 
-                    tick={{ fill: '#64748b' }} 
-                  />
-                  <Tooltip content={<ReportTooltip />} cursor={{ stroke: '#f97316', strokeWidth: 1 }} />
-                  
-                  {/* Confidence Interval Area */}
-                  <Area 
-                    type="monotone" 
-                    dataKey="high" 
-                    data={reportData.map(d => ({ ...d, low: d.low }))} // Trick for range area if needed, or simple area
-                    stroke="none"
-                    fill="url(#colorConfidence)" 
-                  />
-                  
-                  {/* Predicted Line */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="predicted" 
-                    stroke="#f97316" 
-                    strokeWidth={2} 
-                    dot={{ r: 4, fill: "#f97316", strokeWidth: 2, stroke: "#fff" }}
-                    activeDot={{ r: 6 }} 
-                  />
+              {!chartsReady ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Preparing chart...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
+                  <ComposedChart data={reportData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorConfidence" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.1} />
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                    <XAxis 
+                      dataKey="date" 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tickMargin={10} 
+                      fontSize={11} 
+                      tick={{ fill: '#64748b' }} 
+                    />
+                    <YAxis 
+                      tickLine={false} 
+                      axisLine={false} 
+                      fontSize={11} 
+                      tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} 
+                      tick={{ fill: '#64748b' }} 
+                    />
+                    <Tooltip content={<ReportTooltip />} cursor={{ stroke: '#f97316', strokeWidth: 1 }} />
+                    
+                    {/* Confidence Interval Area */}
+                    <Area 
+                      type="monotone" 
+                      dataKey="high" 
+                      data={reportData.map(d => ({ ...d, low: d.low }))} // Trick for range area if needed, or simple area
+                      stroke="none"
+                      fill="url(#colorConfidence)" 
+                    />
+                    
+                    {/* Predicted Line */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="predicted" 
+                      stroke="#f97316" 
+                      strokeWidth={2} 
+                      dot={{ r: 4, fill: "#f97316", strokeWidth: 2, stroke: "#fff" }}
+                      activeDot={{ r: 6 }} 
+                    />
 
-                  {/* Actual Bars */}
-                  <Bar 
-                    dataKey="actual" 
-                    barSize={20} 
-                    fill="#0f172a" 
-                    radius={[4, 4, 0, 0]} 
-                    opacity={0.8}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                    {/* Actual Bars */}
+                    <Bar 
+                      dataKey="actual" 
+                      barSize={20} 
+                      fill="#0f172a" 
+                      radius={[4, 4, 0, 0]} 
+                      opacity={0.8}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

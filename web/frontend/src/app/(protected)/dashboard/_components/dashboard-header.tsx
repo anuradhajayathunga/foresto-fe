@@ -50,7 +50,7 @@ export function DashboardHeader({
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {/* Soft dual-tone radial glows */}
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] dark:bg-primary/20" />
-        <div className="absolute -bottom-32 left-1/4 h-64 w-64 rounded-full bg-blue-500/5 blur-[80px] dark:bg-blue-500/10" />
+        <div className="absolute -bottom-32 left-1/4 h-64 w-64 rounded-full bg-secondary/5 blur-[80px] dark:bg-secondary/10" />
 
         {/* Minimalist Tech Dot Matrix fading out */}
         <svg

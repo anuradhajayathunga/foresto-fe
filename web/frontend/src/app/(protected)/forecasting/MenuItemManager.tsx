@@ -373,7 +373,7 @@ export default function MenuItemManager() {
                             </h4>
                             {selectedItem.salesHistory.length > 0 ? (
                                 <div className="h-[200px] w-full rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
                                     <BarChart data={selectedItem.salesHistory}>
                                         <XAxis 
                                             dataKey="day" 
