@@ -2071,7 +2071,7 @@ export default function KitchenPage() {
                         (rowPlanAlerts?.ingredient_alerts?.length || 0) === 0
                       }
                     >
-                      Create Request
+                      Request Quote
                     </Button>
                     <Button
                       type="button"
@@ -2087,7 +2087,7 @@ export default function KitchenPage() {
                       {saving && (
                         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Buy Selected Supplier
+                      Create Order
                     </Button>
                   </div>
                 </div>

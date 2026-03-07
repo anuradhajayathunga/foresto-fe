@@ -1,4 +1,5 @@
 import csv
+import logging
 from datetime import date
 from decimal import Decimal
 
@@ -38,6 +39,8 @@ from .services_whatsapp import (
     send_whatsapp_text_message,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class SupplierViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Supplier.objects.all()
@@ -70,8 +73,33 @@ class PurchaseInvoiceViewSet(
         s = PurchaseInvoiceCreateSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
         invoice = s.save()
+        auto_email_sent = self._auto_send_email_on_create(invoice)
         out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        payload = dict(out.data)
+        payload["auto_email_sent"] = auto_email_sent
+        return Response(payload, status=status.HTTP_201_CREATED)
+
+    def _auto_send_email_on_create(self, invoice: PurchaseInvoice) -> bool:
+        if not getattr(settings, "PURCHASE_AUTO_EMAIL_ON_CREATE", False):
+            return False
+
+        if invoice.status in [PurchaseInvoice.Status.DRAFT, PurchaseInvoice.Status.VOID]:
+            return False
+
+        to_email = (invoice.supplier.email or "").strip()
+        if not to_email:
+            return False
+
+        subject = build_purchase_email_subject(invoice)
+        body = build_purchase_email_body(invoice)
+
+        try:
+            delivered_count = send_purchase_order_email(to_email=to_email, subject=subject, body=body)
+            return delivered_count > 0
+        except RuntimeError as exc:
+            # Keep purchase creation successful even if email delivery fails.
+            logger.warning("Auto purchase email failed for invoice %s: %s", invoice.id, exc)
+            return False
 
     @action(detail=False, methods=["get"], url_path="export-csv")
     def export_csv(self, request):

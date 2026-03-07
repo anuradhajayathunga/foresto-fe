@@ -152,6 +152,7 @@ WHATSAPP_DEFAULT_COUNTRY_CODE = env("WHATSAPP_DEFAULT_COUNTRY_CODE", default="")
 # Purchase order email
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ishiwara.anu31@gmail.com")
 PURCHASE_EMAIL_FROM = env("PURCHASE_EMAIL_FROM", default="ishiwaraanuradha@gmail.com")
+PURCHASE_AUTO_EMAIL_ON_CREATE = env.bool("PURCHASE_AUTO_EMAIL_ON_CREATE", default=True)
 
 # SMTP/Email backend configuration
 EMAIL_BACKEND = env(

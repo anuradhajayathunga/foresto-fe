@@ -485,10 +485,10 @@ export default function PurchasesPage() {
                           View Details
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer flex items-center">
+                      {/* <DropdownMenuItem className="cursor-pointer flex items-center">
                         <Pencil className="h-4 w-4 mr-2 text-muted-foreground" />{" "}
                         Edit Invoice
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                       {(p.status === "REQUEST" || p.status === "DRAFT") && (
                         <DropdownMenuItem
                           className="cursor-pointer flex items-center"
@@ -537,6 +537,7 @@ export default function PurchasesPage() {
                           Send WhatsApp Order
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
                       {p.status !== "VOID" && (
                         <DropdownMenuItem
                           className="cursor-pointer flex items-center text-destructive focus:text-destructive"
@@ -549,11 +550,10 @@ export default function PurchasesPage() {
                           <CircleSlash className="h-4 w-4 mr-2" />
                           Void Invoice
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="cursor-pointer flex items-center text-destructive focus:text-destructive">
+                      )}                    
+                      {/* <DropdownMenuItem className="cursor-pointer flex items-center text-destructive focus:text-destructive">
                         Delete
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -605,7 +605,7 @@ export default function PurchasesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Void Invoice {voidingInvoice ? `#${voidingInvoice.id}` : ""}
+              Void Invoice {voidingInvoice ? `${voidingInvoice.invoice_no}` : ""}
             </DialogTitle>
             <DialogDescription>
               This will set status to VOID and reverse stock if already
