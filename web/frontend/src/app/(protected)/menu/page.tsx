@@ -229,7 +229,7 @@ export default function MenuPage() {
           <Link href="/menu/add">
             <Button size="sm" className="h-9 shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
-              Add Item
+              Add Menu Item
             </Button>
           </Link>
         </div>
@@ -269,7 +269,7 @@ export default function MenuPage() {
               />
 
               {/* Scrollable categories section */}
-              <div className="relative flex-1 min-w-0">
+              <div className="relative flex-1 min-w-0 mx-auto max-w-7xl">
                 {showLeftArrow && (
                   <div className="absolute inset-y-0 left-0 z-10 h-full flex items-center bg-gradient-to-r from-background to-transparent pr-4">
                     <Button
@@ -315,7 +315,7 @@ export default function MenuPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-md border-border/60 bg-background/70 px-3 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/70 hover:text-foreground whitespace-nowrap"
+                  className="h-8 rounded-md border-border/60 bg-background/70 px-3 text-sm font-bold text-muted-foreground transition-colors hover:border-border hover:bg-muted/70 hover:text-foreground whitespace-nowrap"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1.5" />
                   New Category
