@@ -660,7 +660,12 @@ export default function UnifiedForecastPage() {
                   Preparing chart...
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={300}
+                >
                   <AreaChart
                     data={chartDisplayData}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -673,8 +678,16 @@ export default function UnifiedForecastPage() {
                         x2="0"
                         y2="1"
                       >
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        <stop
+                          offset="5%"
+                          stopColor="#f97316"
+                          stopOpacity={0.2}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#f97316"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -1080,10 +1093,10 @@ export default function UnifiedForecastPage() {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant='outline'
+              variant="outline"
               onClick={() => router.push("forecasting/forecast-accuracy")}
             >
-              View 
+              View
             </Button>
           </div>
         </CardHeader>

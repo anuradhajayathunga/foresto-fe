@@ -13,7 +13,7 @@ export function DashboardHeader({
   children,
   className,
 }: DashboardHeaderProps) {
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
   const [greeting, setGreeting] = useState("Welcome");
   const [dateStr, setDateStr] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -88,10 +88,15 @@ export function DashboardHeader({
             <>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-1 duration-500">
                 {greeting}
-                {displayName ? (
+                {userLoading ? (
+                  <span
+                    className="ml-2 inline-block h-7 w-40 animate-pulse rounded-md bg-slate-600/10 align-middle dark:bg-slate-400/70"
+                    aria-label="Loading user name"
+                  />
+                ) : displayName ? (
                   <>
-                    <span className="text-slate-400 dark:text-slate-500">, </span>
-                    <span className="text-primary/90 capitalize">{displayName}</span>
+                    <span className="text-slate-600 dark:text-slate-400">, </span>
+                    <span className="text-slate-600 dark:text-slate-400 capitalize">{displayName}</span>
                   </>
                 ) : (
                   ""

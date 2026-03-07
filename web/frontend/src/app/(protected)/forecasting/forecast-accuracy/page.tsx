@@ -847,7 +847,12 @@ export default function ForecastAccuracyPage() {
                 Preparing chart...
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                minHeight={280}
+              >
                 <LineChart
                   data={trendData}
                   margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
@@ -956,7 +961,12 @@ export default function ForecastAccuracyPage() {
               </div>
             ) : (
               <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={280}
+                >
                   <BarChart
                     data={dashboard.charts.worstForecastRows}
                     layout="vertical"
@@ -1025,7 +1035,12 @@ export default function ForecastAccuracyPage() {
               </div>
             ) : (
               <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={280}
+                >
                   <BarChart
                     data={dashboard.charts.worstPlanRows}
                     layout="vertical"

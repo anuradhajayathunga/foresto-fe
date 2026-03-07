@@ -12,7 +12,8 @@ import {
   Sparkles,
   Store,
   Tablet,
-  ShoppingBag, 
+  ShoppingBag,
+  ShoppingCart, 
 } from "lucide-react";
 
 interface NavItem {
@@ -35,7 +36,7 @@ export const NAV_DATA: NavSection[] = [
     label: "",//Overview
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, items: [] },
-      { title: "Point of Sale", url: "/sales", icon: ShoppingBag, items: [] }, 
+      { title: "Point of Sale", url: "/sales", icon: ShoppingCart, items: [] }, 
     ],
   },
   {
