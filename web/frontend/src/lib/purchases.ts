@@ -148,6 +148,28 @@ export async function sendPurchaseInvoiceWhatsApp(
   };
 }
 
+export async function sendPurchaseInvoiceEmail(
+  id: string,
+  payload?: { to_email?: string; subject?: string; message?: string },
+) {
+  const res = await authFetch(
+    `/api/purchases/invoices/${id}/send-email-order/`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as {
+    success: boolean;
+    invoice_id: number;
+    supplier: string;
+    to: string;
+    subject: string;
+  };
+}
+
 export async function createPurchaseDraftFromForecast(payload: {
   supplier: number;
   scope: "tomorrow" | "next7";

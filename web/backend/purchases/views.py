@@ -20,11 +20,17 @@ from inventory.permissions import IsStaff
 from .models import PurchaseInvoice, PurchaseLine, Supplier
 from .serializers import (
     PurchaseDraftFromForecastSerializer,
+    PurchaseEmailSendSerializer,
     PurchaseInvoiceCreateSerializer,
     PurchaseInvoiceOutSerializer,
     PurchaseWhatsAppSendSerializer,
     PurchaseVoidSerializer,
     SupplierSerializer,
+)
+from .services_email import (
+    build_purchase_email_body,
+    build_purchase_email_subject,
+    send_purchase_order_email,
 )
 from .services_whatsapp import (
     build_purchase_whatsapp_message,
@@ -419,6 +425,50 @@ class PurchaseInvoiceViewSet(
                 "supplier": invoice.supplier.name,
                 "to": normalized_phone,
                 "provider_response": provider_response,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="send-email-order")
+    def send_email_order(self, request, pk=None):
+        """
+        POST /api/purchases/invoices/{id}/send-email-order/
+        Sends supplier purchase order summary as an email.
+        Optional payload: {"to_email": "supplier@mail.com", "subject": "...", "message": "..."}
+        """
+        invoice = self.get_object()
+
+        if invoice.status == PurchaseInvoice.Status.DRAFT:
+            raise ValidationError({"detail": "Cannot send email for DRAFT invoice."})
+
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "Cannot send email for VOID invoice."})
+
+        payload = PurchaseEmailSendSerializer(data=request.data or {})
+        payload.is_valid(raise_exception=True)
+
+        to_email = (payload.validated_data.get("to_email") or invoice.supplier.email or "").strip()
+        if not to_email:
+            raise ValidationError({"detail": "Supplier email is missing."})
+
+        custom_subject = (payload.validated_data.get("subject") or "").strip()
+        custom_message = (payload.validated_data.get("message") or "").strip()
+
+        subject = custom_subject or build_purchase_email_subject(invoice)
+        body = custom_message or build_purchase_email_body(invoice)
+
+        try:
+            delivered_count = send_purchase_order_email(to_email=to_email, subject=subject, body=body)
+        except RuntimeError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        return Response(
+            {
+                "success": delivered_count > 0,
+                "invoice_id": invoice.id,
+                "supplier": invoice.supplier.name,
+                "to": to_email,
+                "subject": subject,
             },
             status=status.HTTP_200_OK,
         )

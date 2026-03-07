@@ -164,3 +164,9 @@ class PurchaseDraftFromForecastSerializer(serializers.Serializer):
 
 class PurchaseWhatsAppSendSerializer(serializers.Serializer):
     message = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+
+
+class PurchaseEmailSendSerializer(serializers.Serializer):
+    to_email = serializers.EmailField(required=False)
+    subject = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    message = serializers.CharField(required=False, allow_blank=True, max_length=5000)

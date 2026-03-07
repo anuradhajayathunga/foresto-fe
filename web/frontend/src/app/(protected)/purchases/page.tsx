@@ -7,6 +7,7 @@ import {
   PurchaseInvoice,
   exportPurchasesCsv,
   confirmPurchaseInvoice,
+  sendPurchaseInvoiceEmail,
   sendPurchaseInvoiceWhatsApp,
   voidPurchaseInvoice,
 } from "@/lib/purchases";
@@ -28,12 +29,14 @@ import {
   CircleSlash,
   Loader2,
   MessageCircle,
+  Mail,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -81,6 +84,12 @@ export default function PurchasesPage() {
   );
   const [voidReason, setVoidReason] = useState("");
   const [voidErr, setVoidErr] = useState<string | null>(null);
+  const [emailingInvoice, setEmailingInvoice] =
+    useState<PurchaseInvoice | null>(null);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailErr, setEmailErr] = useState<string | null>(null);
 
   // Default to current month for export
   const [from, setFrom] = useState(() =>
@@ -143,6 +152,31 @@ export default function PurchasesPage() {
       toast.success(`WhatsApp order sent to ${res.to}`);
     } catch (e: any) {
       toast.error(getErrorMessage(e));
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleSendEmail() {
+    if (!emailingInvoice) return;
+
+    setActionLoadingId(emailingInvoice.id);
+    setEmailErr(null);
+    try {
+      const res = await sendPurchaseInvoiceEmail(String(emailingInvoice.id), {
+        to_email: emailTo.trim() || undefined,
+        subject: emailSubject.trim() || undefined,
+        message: emailMessage.trim() || undefined,
+      });
+      toast.success(`Email order sent to ${res.to}`);
+      setEmailingInvoice(null);
+      setEmailTo("");
+      setEmailSubject("");
+      setEmailMessage("");
+    } catch (e: any) {
+      const msg = getErrorMessage(e);
+      setEmailErr(msg);
+      toast.error(msg);
     } finally {
       setActionLoadingId(null);
     }
@@ -458,6 +492,26 @@ export default function PurchasesPage() {
                         <DropdownMenuItem
                           className="cursor-pointer flex items-center"
                           disabled={actionLoadingId === p.id}
+                          onClick={() => {
+                            setEmailingInvoice(p);
+                            setEmailTo("");
+                            setEmailSubject(`Purchase Order - PO #${p.id}`);
+                            setEmailMessage("");
+                            setEmailErr(null);
+                          }}
+                        >
+                          {actionLoadingId === p.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin text-sky-600" />
+                          ) : (
+                            <Mail className="h-4 w-4 mr-2 text-sky-600" />
+                          )}
+                          Send Email Order
+                        </DropdownMenuItem>
+                      )}
+                      {p.status !== "VOID" && p.status !== "DRAFT" && (
+                        <DropdownMenuItem
+                          className="cursor-pointer flex items-center"
+                          disabled={actionLoadingId === p.id}
                           onClick={() => void handleSendWhatsApp(p)}
                         >
                           {actionLoadingId === p.id ? (
@@ -576,6 +630,98 @@ export default function PurchasesPage() {
               }
             >
               {actionLoadingId === voidingInvoice?.id ? "Voiding..." : "Void"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(emailingInvoice)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEmailingInvoice(null);
+            setEmailTo("");
+            setEmailSubject("");
+            setEmailMessage("");
+            setEmailErr(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>
+              Send Email Order {emailingInvoice ? `#${emailingInvoice.id}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Send this purchase order to supplier by email. Leave recipient
+              empty to use the supplier email saved in the system.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email_to">To (optional)</Label>
+              <Input
+                id="email_to"
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="supplier@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email_subject">Subject (optional)</Label>
+              <Input
+                id="email_subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Purchase Order"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email_message">Message (optional)</Label>
+              <Textarea
+                id="email_message"
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Add a custom message..."
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                If message is empty, the system will send the default purchase
+                order summary.
+              </p>
+            </div>
+
+            {emailErr ? (
+              <div className="text-sm text-destructive">{emailErr}</div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEmailingInvoice(null);
+                setEmailTo("");
+                setEmailSubject("");
+                setEmailMessage("");
+                setEmailErr(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSendEmail()}
+              disabled={
+                !emailingInvoice || actionLoadingId === emailingInvoice?.id
+              }
+            >
+              {actionLoadingId === emailingInvoice?.id
+                ? "Sending..."
+                : "Send Email"}
             </Button>
           </DialogFooter>
         </DialogContent>
