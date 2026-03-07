@@ -26,12 +26,12 @@ export default async function Home({ searchParams }: PropsType) {
   return (
     <main>
       {/* Full-width Header with Cover Image */}
-      <div className="w-full px-4 sm:px-6">
+      <div className="w-full">
         <DashboardHeader />
       </div>
 
       {/* Content Section */}
-      <div className="w-full pt-8 px-4 sm:px-6">
+      <div className="w-full pt-8">
         <div className="space-y-8">
           <section>
             <Suspense fallback={<OverviewCardsSkeleton />}>

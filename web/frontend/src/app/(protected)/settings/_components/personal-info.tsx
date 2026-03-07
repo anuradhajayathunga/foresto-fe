@@ -34,7 +34,7 @@ export function PersonalInfoForm() {
 
   const initial = useMemo<FormState>(
     () => ({
-      fullName: `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim(),
+      fullName: `${user?.first_name ?? ''} ${user?.last_name ?? user?.username }`.trim(),
       phoneNumber: '',
       email: user?.email ?? '',
       username: user?.username ?? '',
@@ -170,7 +170,7 @@ export function PersonalInfoForm() {
           />
         </div>
 
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <Label className="text-sm font-semibold">Bio</Label>
           <textarea
             value={form.bio}
@@ -180,7 +180,7 @@ export function PersonalInfoForm() {
             className={cn(
               'w-full rounded-lg border border-input bg-muted/40 px-3 py-2 text-sm text-foreground',
               'placeholder:text-muted-foreground/80',
-              'shadow-sm outline-none transition-colors transition-shadow',
+              'shadow-sm outline-none transition-all',
               'hover:bg-muted/60',
               'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15'
             )}
@@ -188,7 +188,7 @@ export function PersonalInfoForm() {
           <p className="text-xs text-muted-foreground">
             This will be visible to team members who can view your profile.
           </p>
-        </div>
+        </div> */}
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>

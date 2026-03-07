@@ -57,8 +57,8 @@ export default function ProfilePage() {
   const [data, setData] = useState({
     name: "Danish Heilium",
     role: "Product Designer",
-    location: "San Francisco, CA",
-    website: "https://danish.design",
+    location: "Colombo, Sri Lanka",
+    website: "https://foresto.com/danish-heilium",
     about:
       "Passionate about building accessible and beautiful user experiences. Currently working on the next generation of SaaS tools.",
     profilePhoto: "/images/user/user-03.png",
