@@ -83,6 +83,7 @@ def build_purchase_email_html(invoice: PurchaseInvoice, custom_message: str = ""
         "title": title,
         "supplier_name": invoice.supplier.name,
         "invoice_id": invoice.id,
+        "invoice_no": invoice.invoice_no,
         "invoice_date": invoice.invoice_date,
         "status": status_display,
         "lines": [

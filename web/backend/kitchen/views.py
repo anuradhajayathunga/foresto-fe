@@ -398,8 +398,7 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
                 discount=Decimal("0.00"),
                 tax=Decimal("0.00"),
                 note=(
-                    f"Draft from KitchenPurchaseRequest #{purchase_request.id}"
-                    + (f" | plan_date={purchase_request.source_plan_date}" if purchase_request.source_plan_date else "")
+                    (f" | plan_date={purchase_request.source_plan_date}" if purchase_request.source_plan_date else "")
                     + (f" | {extra_note}" if extra_note else "")
                 ),
                 created_by=request.user,
@@ -656,7 +655,7 @@ class KitchenPurchaseRequestViewSet(RestaurantScopedQuerysetMixin, viewsets.Read
                 discount=Decimal("0.00"),
                 tax=Decimal("0.00"),
                 note=(
-                    f"Draft from KitchenPurchaseRequest #{pr.id}"
+                    f""
                     + (f" | plan_date={pr.source_plan_date}" if pr.source_plan_date else "")
                     + (f" | {extra_note}" if extra_note else "")
                 ),
