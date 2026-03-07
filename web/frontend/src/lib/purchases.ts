@@ -17,6 +17,7 @@ export type PurchaseInvoice = {
   id: number;
   supplier: number;
   supplier_name: string;
+  supplier_email?: string;
   invoice_no: string;
   invoice_date: string;
   subtotal: string;

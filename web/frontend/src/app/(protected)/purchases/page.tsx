@@ -30,6 +30,9 @@ import {
   Loader2,
   MessageCircle,
   Mail,
+  AlertCircle,
+  Send,
+  Type,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -239,6 +242,18 @@ export default function PurchasesPage() {
       setExportErr(e?.message || "Export failed");
     }
   }
+
+  const isSending = actionLoadingId === emailingInvoice?.id;
+
+  const handleClose = (open: boolean) => {
+    if (!open && !isSending) {
+      setEmailingInvoice(null);
+      setEmailTo("");
+      setEmailSubject("");
+      setEmailMessage("");
+      setEmailErr(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 mx-auto w-full">
@@ -494,8 +509,8 @@ export default function PurchasesPage() {
                           disabled={actionLoadingId === p.id}
                           onClick={() => {
                             setEmailingInvoice(p);
-                            setEmailTo("");
-                            setEmailSubject(`Purchase Order - PO #${p.id}`);
+                            setEmailTo(p.supplier_email || "");
+                            setEmailSubject(`Purchase Order - ${p.invoice_no}`);
                             setEmailMessage("");
                             setEmailErr(null);
                           }}
@@ -647,84 +662,142 @@ export default function PurchasesPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>
-              Send Email Order {emailingInvoice ? `#${emailingInvoice.id}` : ""}
-            </DialogTitle>
-            <DialogDescription>
-              Send this purchase order to supplier by email. Leave recipient
-              empty to use the supplier email saved in the system.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="email_to">To (optional)</Label>
-              <Input
-                id="email_to"
-                type="email"
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                placeholder="supplier@example.com"
-              />
+        <Dialog open={Boolean(emailingInvoice)} onOpenChange={handleClose}>
+          <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden border-slate-200 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+            {/* --- Header Section --- */}
+            <div className="bg-slate-50/50 px-6 py-5 border-b border-slate-100 dark:bg-slate-900/50 dark:border-slate-800">
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 dark:bg-primary/10 dark:text-primary/40">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                    Email Purchase Order
+                  </DialogTitle>
+                </div>
+                <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Send order{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    #{emailingInvoice?.invoice_no}
+                  </span>{" "}
+                  to your supplier. Leave the recipient empty to use their
+                  default saved email.
+                </DialogDescription>
+              </DialogHeader>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email_subject">Subject (optional)</Label>
-              <Input
-                id="email_subject"
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                placeholder="Purchase Order"
-              />
+            {/* --- Body Section --- */}
+            <div className="px-6 space-y-5">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="email_to"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                  >
+                    Recipient (To)
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="email_to"
+                      type="email"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      // placeholder="supplier@example.com"
+                      className="pl-9 bg-white dark:bg-slate-950 focus-visible:ring-primary/30"
+                      disabled={isSending}
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="email_subject"
+                    className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                  >
+                    Subject Line
+                  </Label>
+                  <div className="relative">
+                    <Type className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="email_subject"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      placeholder={`Purchase Order #${emailingInvoice?.invoice_no || ""}`}
+                      className="pl-9 bg-white dark:bg-slate-950 focus-visible:ring-primary/30"
+                      disabled={isSending}
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="email_message"
+                      className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      Message
+                    </Label>
+                    <span className="text-[10px] text-slate-400">Optional</span>
+                  </div>
+                  <Textarea
+                    id="email_message"
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.target.value)}
+                    placeholder="Add a custom note to the supplier..."
+                    rows={4}
+                    className="resize-none bg-white dark:bg-slate-950 focus-visible:ring-primary/30 text-sm"
+                    disabled={isSending}
+                  />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    If left blank, a standard automated summary will be sent.
+                  </p>
+                </div>
+              </div>
+
+              {/* Error State */}
+              {emailErr && (
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-rose-50 border border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/20 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 mt-0.5 shrink-0" />
+                  <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+                    {emailErr}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email_message">Message (optional)</Label>
-              <Textarea
-                id="email_message"
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                placeholder="Add a custom message..."
-                rows={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                If message is empty, the system will send the default purchase
-                order summary.
-              </p>
+            {/* --- Footer Section --- */}
+            <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2 dark:bg-slate-900/50 dark:border-slate-800">
+              <Button
+                variant="outline"
+                onClick={() => handleClose(false)}
+                disabled={isSending}
+                className="bg-white dark:bg-slate-950 dark:border-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handleSendEmail()}
+                disabled={!emailingInvoice || isSending}
+                className="bg-primary text-white hover:bg-primary/80 focus-visible:ring-primary min-w-[120px]"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Email
+                  </>
+                )}
+              </Button>
             </div>
-
-            {emailErr ? (
-              <div className="text-sm text-destructive">{emailErr}</div>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEmailingInvoice(null);
-                setEmailTo("");
-                setEmailSubject("");
-                setEmailMessage("");
-                setEmailErr(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => void handleSendEmail()}
-              disabled={
-                !emailingInvoice || actionLoadingId === emailingInvoice?.id
-              }
-            >
-              {actionLoadingId === emailingInvoice?.id
-                ? "Sending..."
-                : "Send Email"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          </DialogContent>
+        </Dialog>
       </Dialog>
     </div>
   );

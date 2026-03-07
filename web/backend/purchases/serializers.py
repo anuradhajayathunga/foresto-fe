@@ -31,6 +31,7 @@ class PurchaseInvoiceOutSerializer(serializers.ModelSerializer):
     restaurant = serializers.IntegerField(source="restaurant_id", read_only=True)
     supplier = serializers.IntegerField(source="supplier_id", read_only=True)
     supplier_name = serializers.CharField(source="supplier.name", read_only=True)
+    supplier_email = serializers.CharField(source="supplier.email", read_only=True)
     lines = PurchaseLineOutSerializer(many=True, read_only=True)
 
     class Meta:
@@ -40,6 +41,7 @@ class PurchaseInvoiceOutSerializer(serializers.ModelSerializer):
             "restaurant",
             "supplier",
             "supplier_name",
+            "supplier_email",
             "invoice_no",
             "invoice_date",
             "status",
