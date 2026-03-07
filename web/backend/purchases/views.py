@@ -30,6 +30,7 @@ from .serializers import (
 )
 from .services_email import (
     build_purchase_email_body,
+    build_purchase_email_html,
     build_purchase_email_subject,
     send_purchase_order_email,
 )
@@ -92,9 +93,15 @@ class PurchaseInvoiceViewSet(
 
         subject = build_purchase_email_subject(invoice)
         body = build_purchase_email_body(invoice)
+        html_body = build_purchase_email_html(invoice)
 
         try:
-            delivered_count = send_purchase_order_email(to_email=to_email, subject=subject, body=body)
+            delivered_count = send_purchase_order_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+                html_body=html_body,
+            )
             return delivered_count > 0
         except RuntimeError as exc:
             # Keep purchase creation successful even if email delivery fails.
@@ -484,9 +491,15 @@ class PurchaseInvoiceViewSet(
 
         subject = custom_subject or build_purchase_email_subject(invoice)
         body = custom_message or build_purchase_email_body(invoice)
+        html_body = build_purchase_email_html(invoice, custom_message=custom_message)
 
         try:
-            delivered_count = send_purchase_order_email(to_email=to_email, subject=subject, body=body)
+            delivered_count = send_purchase_order_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+                html_body=html_body,
+            )
         except RuntimeError as exc:
             raise ValidationError({"detail": str(exc)}) from exc
 

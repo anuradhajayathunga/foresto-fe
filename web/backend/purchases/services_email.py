@@ -2,7 +2,8 @@ from decimal import Decimal
 from smtplib import SMTPException
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, send_mail
+from django.template.loader import render_to_string
 
 from .models import PurchaseInvoice
 
@@ -68,7 +69,44 @@ def build_purchase_email_body(invoice: PurchaseInvoice) -> str:
     return "\n".join(header + body + footer)
 
 
-def send_purchase_order_email(to_email: str, subject: str, body: str) -> int:
+def build_purchase_email_html(invoice: PurchaseInvoice, custom_message: str = "") -> str:
+    lines = list(invoice.lines.select_related("item").all().order_by("sort_order", "id"))
+    title, action_line = get_purchase_email_template_meta(invoice.status)
+
+    status_display = (
+        invoice.get_status_display()
+        if hasattr(invoice, "get_status_display")
+        else invoice.status
+    )
+
+    context = {
+        "title": title,
+        "supplier_name": invoice.supplier.name,
+        "invoice_id": invoice.id,
+        "invoice_date": invoice.invoice_date,
+        "status": status_display,
+        "lines": [
+            {
+                "item_name": line.item.name,
+                "qty": Decimal(line.qty).quantize(Decimal("0.01")),
+                "unit_cost": Decimal(line.unit_cost).quantize(Decimal("0.01")),
+                "line_total": Decimal(line.line_total).quantize(Decimal("0.01")),
+            }
+            for line in lines
+        ],
+        "subtotal": Decimal(invoice.subtotal).quantize(Decimal("0.01")),
+        "discount": Decimal(invoice.discount).quantize(Decimal("0.01")),
+        "tax": Decimal(invoice.tax).quantize(Decimal("0.01")),
+        "total": Decimal(invoice.total).quantize(Decimal("0.01")),
+        "note": (invoice.note or "").strip(),
+        "action_line": action_line,
+        "custom_message": (custom_message or "").strip(),
+    }
+
+    return render_to_string("purchases/purchase_order_email.html", context)
+
+
+def send_purchase_order_email(to_email: str, subject: str, body: str, html_body: str = "") -> int:
     from_email = getattr(settings, "PURCHASE_EMAIL_FROM", "") or getattr(
         settings,
         "DEFAULT_FROM_EMAIL",
@@ -79,6 +117,16 @@ def send_purchase_order_email(to_email: str, subject: str, body: str) -> int:
         raise RuntimeError("Email sender is not configured.")
 
     try:
+        if html_body.strip():
+            message = EmailMultiAlternatives(
+                subject=subject,
+                body=body,
+                from_email=from_email,
+                to=[to_email],
+            )
+            message.attach_alternative(html_body, "text/html")
+            return message.send(fail_silently=False)
+
         return send_mail(
             subject=subject,
             message=body,

@@ -550,10 +550,10 @@ export default function PurchasesPage() {
                           <CircleSlash className="h-4 w-4 mr-2" />
                           Void Invoice
                         </DropdownMenuItem>
-                      )}                    
-                      {/* <DropdownMenuItem className="cursor-pointer flex items-center text-destructive focus:text-destructive">
+                      )}
+                      <DropdownMenuItem className="cursor-pointer flex items-center text-destructive focus:text-destructive">
                         Delete
-                      </DropdownMenuItem> */}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -605,7 +605,8 @@ export default function PurchasesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Void Invoice {voidingInvoice ? `${voidingInvoice.invoice_no}` : ""}
+              Void Invoice{" "}
+              {voidingInvoice ? `${voidingInvoice.invoice_no}` : ""}
             </DialogTitle>
             <DialogDescription>
               This will set status to VOID and reverse stock if already
@@ -678,7 +679,7 @@ export default function PurchasesPage() {
                 <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                   Send order{" "}
                   <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    #{emailingInvoice?.invoice_no}
+                    {emailingInvoice?.invoice_no}
                   </span>{" "}
                   to your supplier. Leave the recipient empty to use their
                   default saved email.

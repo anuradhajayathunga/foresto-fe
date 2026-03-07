@@ -628,7 +628,7 @@ export default function KitchenPage() {
         invoice_no: rowAlertInvoiceNo.trim() || generatePurchaseReferenceNo(),
         invoice_date: rowAlertInvoiceDate,
         status: "DRAFT",
-        note: `Draft from production alert row #${selectedAlertRow.id}${alertNote ? ` | ${alertNote}` : ""}`,
+        note: `Auto-created from kitchen low-stock check for production of ${items.find((i) => i.id === selectedAlertRow.menu_item)?.name || "Unknown Item"} on ${selectedAlertRow.date}.`,
         lines,
       });
 
@@ -707,7 +707,7 @@ export default function KitchenPage() {
       const invoiceId = resp.purchase_invoice?.id;
       if (invoiceId) {
         setSuccess(
-          `Draft purchase invoice #${invoiceId} created from low-stock alerts.`,
+          ` ${alertNote}`,
         );
         await loadKitchenData();
         router.push(`/purchases/${invoiceId}`);
