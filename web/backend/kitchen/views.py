@@ -1,8 +1,10 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import DecimalField, Sum, Value
 from django.db.models.functions import Coalesce
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -27,6 +29,10 @@ from kitchen.services_forecasting import get_menu_item_suggestions_from_forecast
 from kitchen.services_planning import build_low_stock_alerts_for_plan
 from menu.models import MenuItem
 from purchases.serializers import PurchaseInvoiceOutSerializer
+from sales.business_rules import (
+    get_menu_item_ids_for_waste_sync_for_date,
+    sync_auto_unsold_waste_for_date,
+)
 from sales.models import SaleItem
 
 
@@ -446,6 +452,58 @@ class MenuItemWasteViewSet(KitchenBaseFiltersMixin, RestaurantScopedQuerysetMixi
         s.is_valid(raise_exception=True)
         obj = s.create_or_update()
         return Response(MenuItemWasteSerializer(obj, context={"request": request}).data)
+
+    @action(detail=False, methods=["post"], url_path="sync-auto-unsold")
+    def sync_auto_unsold(self, request):
+        restaurant = resolve_target_restaurant_for_request(request, request.data)
+
+        date_raw = request.data.get("date")
+        if date_raw:
+            target_date = parse_date(str(date_raw))
+            if not target_date:
+                return Response({"detail": "Invalid date. Use YYYY-MM-DD."}, status=400)
+        else:
+            target_date = timezone.localdate() - timedelta(days=1)
+
+        menu_item_ids = request.data.get("menu_item_ids")
+        if menu_item_ids is None:
+            menu_item_ids = get_menu_item_ids_for_waste_sync_for_date(
+                restaurant_id=restaurant.id,
+                target_date=target_date,
+            )
+        else:
+            if not isinstance(menu_item_ids, list):
+                return Response({"detail": "menu_item_ids must be an array of integers."}, status=400)
+            try:
+                menu_item_ids = sorted({int(mid) for mid in menu_item_ids if int(mid) > 0})
+            except (TypeError, ValueError):
+                return Response({"detail": "menu_item_ids must contain only positive integers."}, status=400)
+
+        if not menu_item_ids:
+            return Response(
+                {
+                    "restaurant_id": restaurant.id,
+                    "date": str(target_date),
+                    "synced_menu_item_count": 0,
+                    "detail": "No production/sales/waste items found for the requested date.",
+                }
+            )
+
+        sync_auto_unsold_waste_for_date(
+            restaurant_id=restaurant.id,
+            target_date=target_date,
+            menu_item_ids=menu_item_ids,
+        )
+
+        return Response(
+            {
+                "restaurant_id": restaurant.id,
+                "date": str(target_date),
+                "synced_menu_item_count": len(menu_item_ids),
+                "menu_item_ids": menu_item_ids,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["get"])
     def summary(self, request):

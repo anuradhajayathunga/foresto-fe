@@ -11,6 +11,7 @@ import {
   checkPlanAlerts,
   listWastes,
   upsertWaste,
+  syncAutoUnsoldWaste,
   getWasteSummary,
   getWasteVsSales,
   listKitchenPurchaseRequests,
@@ -80,6 +81,7 @@ import {
   X,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import toast from "react-hot-toast";
 
 // --- Utilities ---
 function todayISO() {
@@ -89,6 +91,12 @@ function todayISO() {
 function tomorrowISO() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -199,9 +207,13 @@ export default function KitchenPage() {
   const [selectedWasteId, setSelectedWasteId] = useState<number | null>(null);
   const [wasteFormOpen, setWasteFormOpen] = useState(false);
   const [wasteFormSide, setWasteFormSide] = useState<"left" | "right">("right");
+  const [autoWasteDate, setAutoWasteDate] = useState<string>(() =>
+    yesterdayISO(),
+  );
 
   // UI State
   const [saving, setSaving] = useState(false);
+  const [syncingAutoWaste, setSyncingAutoWaste] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -775,6 +787,31 @@ export default function KitchenPage() {
       setErr(parseError(e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSyncAutoUnsoldWaste() {
+    setSyncingAutoWaste(true);
+    setErr(null);
+    setSuccess(null);
+    try {
+      const response = await syncAutoUnsoldWaste({ date: autoWasteDate });
+      const syncedCount = response.synced_menu_item_count || 0;
+      const message =
+        syncedCount > 0
+          ? `Auto unsold waste synced for ${response.date} (${syncedCount} menu item${syncedCount === 1 ? "" : "s"}).`
+          : response.detail ||
+            `No eligible waste records found for ${response.date}.`;
+
+      setSuccess(message);
+      toast.success(message);
+      await loadKitchenData();
+    } catch (e: any) {
+      const message = parseError(e);
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setSyncingAutoWaste(false);
     }
   }
 
@@ -2101,7 +2138,31 @@ export default function KitchenPage() {
           value="waste"
           className="space-y-6 animate-in fade-in slide-in-from-bottom-2"
         >
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
+            {/* <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="grid gap-1">
+                <Label className="text-xs uppercase text-muted-foreground">
+                  Auto Sync Date
+                </Label>
+                <Input
+                  type="date"
+                  className="h-9 w-44 bg-background"
+                  value={autoWasteDate}
+                  onChange={(e) => setAutoWasteDate(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="h-9 gap-2"
+                onClick={handleSyncAutoUnsoldWaste}
+                disabled={syncingAutoWaste || loading || saving}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${syncingAutoWaste ? "animate-spin" : ""}`}
+                />
+                {syncingAutoWaste ? "Syncing..." : "Sync Auto Unsold"}
+              </Button>
+            </div> */}
             <Button onClick={openNewWasteForm} className="gap-2">
               <Plus className="h-4 w-4" />
               New Waste

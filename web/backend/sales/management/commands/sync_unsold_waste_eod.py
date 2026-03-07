@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import Restaurant
-from kitchen.models import MenuItemProduction, MenuItemWaste
-from sales.business_rules import AUTO_WASTE_NOTE_PREFIX, sync_auto_unsold_waste_for_date
-from sales.models import Sale, SaleItem
+from sales.business_rules import (
+    get_menu_item_ids_for_waste_sync_for_date,
+    sync_auto_unsold_waste_for_date,
+)
 
 
 class Command(BaseCommand):
@@ -67,7 +67,10 @@ class Command(BaseCommand):
         skipped = 0
 
         for restaurant in restaurants_qs.iterator():
-            menu_item_ids = self._menu_item_ids_for_date(restaurant.id, target_date)
+            menu_item_ids = get_menu_item_ids_for_waste_sync_for_date(
+                restaurant_id=restaurant.id,
+                target_date=target_date,
+            )
             if not menu_item_ids:
                 skipped += 1
                 self.stdout.write(f"- restaurant_id={restaurant.id}: no production/sales/waste items for {target_date}, skipped")
@@ -104,34 +107,3 @@ class Command(BaseCommand):
             return datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError as exc:
             raise CommandError("Invalid --date format. Use YYYY-MM-DD.") from exc
-
-    def _menu_item_ids_for_date(self, restaurant_id, target_date):
-        production_ids = set(
-            MenuItemProduction.objects.filter(restaurant_id=restaurant_id, date=target_date)
-            .values_list("menu_item_id", flat=True)
-            .distinct()
-        )
-
-        sold_ids = set(
-            SaleItem.objects.filter(
-                restaurant_id=restaurant_id,
-                sale__restaurant_id=restaurant_id,
-                sale__status=Sale.Status.PAID,
-                sale__sold_at__date=target_date,
-            )
-            .exclude(menu_item_id__isnull=True)
-            .values_list("menu_item_id", flat=True)
-            .distinct()
-        )
-
-        existing_auto_waste_ids = set(
-            MenuItemWaste.objects.filter(
-                restaurant_id=restaurant_id,
-                date=target_date,
-            )
-            .filter(Q(reason=MenuItemWaste.Reason.UNSOLD) | Q(note__startswith=AUTO_WASTE_NOTE_PREFIX))
-            .values_list("menu_item_id", flat=True)
-            .distinct()
-        )
-
-        return sorted(production_ids | sold_ids | existing_auto_waste_ids)

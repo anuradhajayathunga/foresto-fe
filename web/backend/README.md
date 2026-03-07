@@ -262,6 +262,27 @@ Example crontab entry for `2:00 AM` daily:
 0 2 * * * cd /path/to/foresto-web-app/web/backend && /path/to/venv/bin/python manage.py sync_unsold_waste_eod >> /var/log/foresto_waste_sync.log 2>&1
 ```
 
+Manual API trigger (for UI/admin actions):
+
+```text
+POST /api/kitchen/wastes/sync-auto-unsold/
+Authorization: Bearer <token>
+```
+
+Request body:
+
+```json
+{
+  "date": "2026-03-06",
+  "menu_item_ids": [12, 35]
+}
+```
+
+Notes:
+
+- `date` is optional. If omitted, backend uses yesterday in server timezone.
+- `menu_item_ids` is optional. If omitted, backend auto-detects menu items from production + paid sales + existing auto-unsold waste rows for that date.
+
 ### Collect Static (Production)
 
 ```bash

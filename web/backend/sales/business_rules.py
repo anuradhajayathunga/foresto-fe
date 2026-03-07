@@ -1,7 +1,7 @@
 from collections import defaultdict
 from decimal import Decimal
 
-from django.db.models import DecimalField, Sum, Value
+from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
 from kitchen.models import MenuItemProduction, MenuItemWaste
@@ -159,6 +159,41 @@ def sync_auto_unsold_waste_for_date(*, restaurant_id: int, target_date, menu_ite
             reason=MenuItemWaste.Reason.UNSOLD,
             note=f"{AUTO_WASTE_NOTE_PREFIX}; prepared={prepared}; sold={sold}",
         )
+
+
+def get_menu_item_ids_for_waste_sync_for_date(*, restaurant_id: int, target_date) -> list[int]:
+    production_ids = set(
+        MenuItemProduction.objects.filter(
+            restaurant_id=restaurant_id,
+            date=target_date,
+        )
+        .values_list("menu_item_id", flat=True)
+        .distinct()
+    )
+
+    sold_ids = set(
+        SaleItem.objects.filter(
+            restaurant_id=restaurant_id,
+            sale__restaurant_id=restaurant_id,
+            sale__status=Sale.Status.PAID,
+            sale__sold_at__date=target_date,
+        )
+        .exclude(menu_item_id__isnull=True)
+        .values_list("menu_item_id", flat=True)
+        .distinct()
+    )
+
+    existing_auto_waste_ids = set(
+        MenuItemWaste.objects.filter(
+            restaurant_id=restaurant_id,
+            date=target_date,
+        )
+        .filter(Q(reason=MenuItemWaste.Reason.UNSOLD) | Q(note__startswith=AUTO_WASTE_NOTE_PREFIX))
+        .values_list("menu_item_id", flat=True)
+        .distinct()
+    )
+
+    return sorted(production_ids | sold_ids | existing_auto_waste_ids)
 
 
 def aggregate_incoming_menu_qty(items: list[dict]) -> dict[int, Decimal]:

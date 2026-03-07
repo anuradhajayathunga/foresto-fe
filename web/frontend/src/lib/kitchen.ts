@@ -1,4 +1,4 @@
-import { authFetch, unwrapList } from '@/lib/auth';
+import { authFetch, unwrapList } from "@/lib/auth";
 
 export type KitchenProduction = {
   id: number;
@@ -22,7 +22,7 @@ export type KitchenWaste = {
   menu_item_name?: string;
   category_name?: string;
   waste_qty: string;
-  reason?: 'UNSOLD' | 'BURNT' | 'RETURNED' | 'EXPIRED' | '';
+  reason?: "UNSOLD" | "BURNT" | "RETURNED" | "EXPIRED" | "";
   note?: string;
 };
 
@@ -41,7 +41,7 @@ export type KitchenIngredientAlert = {
   projected_remaining?: string;
   shortage_to_meet_plan?: string;
   suggested_purchase_qty: string;
-  severity: 'LOW' | 'CRITICAL' | string;
+  severity: "LOW" | "CRITICAL" | string;
 };
 
 export type KitchenAlertData = {
@@ -69,7 +69,13 @@ export type KitchenPurchaseRequest = {
   id: number;
   request_date: string;
   source_plan_date?: string | null;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CONVERTED' | 'CANCELLED' | string;
+  status:
+    | "DRAFT"
+    | "SUBMITTED"
+    | "APPROVED"
+    | "CONVERTED"
+    | "CANCELLED"
+    | string;
   note?: string;
   created_by?: number;
   created_at?: string;
@@ -105,19 +111,22 @@ export async function listProductions(params?: {
   menu_item?: number;
 }) {
   const qs = new URLSearchParams();
-  if (params?.date_from) qs.set('date_from', params.date_from);
-  if (params?.date_to) qs.set('date_to', params.date_to);
-  if (typeof params?.menu_item === 'number') qs.set('menu_item', String(params.menu_item));
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  if (typeof params?.menu_item === "number")
+    qs.set("menu_item", String(params.menu_item));
 
-  const res = await authFetch(`/api/kitchen/productions/${qs.toString() ? `?${qs.toString()}` : ''}`);
+  const res = await authFetch(
+    `/api/kitchen/productions/${qs.toString() ? `?${qs.toString()}` : ""}`,
+  );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<KitchenProduction>(data);
 }
 
 export async function upsertProduction(payload: UpsertProductionPayload) {
-  const res = await authFetch('/api/kitchen/productions/upsert/', {
-    method: 'POST',
+  const res = await authFetch("/api/kitchen/productions/upsert/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -144,8 +153,8 @@ export async function bulkUpsertProductions(payload: {
   purchase_invoice_no?: string;
   purchase_note?: string;
 }) {
-  const res = await authFetch('/api/kitchen/productions/bulk-upsert/', {
-    method: 'POST',
+  const res = await authFetch("/api/kitchen/productions/bulk-upsert/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -164,8 +173,8 @@ export async function forecastSuggestProductions(payload: {
   date: string;
   save_to_production?: boolean;
 }) {
-  const res = await authFetch('/api/kitchen/productions/forecast-suggest/', {
-    method: 'POST',
+  const res = await authFetch("/api/kitchen/productions/forecast-suggest/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -188,8 +197,8 @@ export async function checkPlanAlerts(payload: {
   purchase_invoice_date?: string;
   purchase_invoice_no?: string;
 }) {
-  const res = await authFetch('/api/kitchen/productions/plan-alerts/', {
-    method: 'POST',
+  const res = await authFetch("/api/kitchen/productions/plan-alerts/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -207,11 +216,14 @@ export async function listWastes(params?: {
   menu_item?: number;
 }) {
   const qs = new URLSearchParams();
-  if (params?.date_from) qs.set('date_from', params.date_from);
-  if (params?.date_to) qs.set('date_to', params.date_to);
-  if (typeof params?.menu_item === 'number') qs.set('menu_item', String(params.menu_item));
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  if (typeof params?.menu_item === "number")
+    qs.set("menu_item", String(params.menu_item));
 
-  const res = await authFetch(`/api/kitchen/wastes/${qs.toString() ? `?${qs.toString()}` : ''}`);
+  const res = await authFetch(
+    `/api/kitchen/wastes/${qs.toString() ? `?${qs.toString()}` : ""}`,
+  );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<KitchenWaste>(data);
@@ -221,11 +233,11 @@ export async function upsertWaste(payload: {
   date: string;
   menu_item: number;
   waste_qty?: string;
-  reason?: 'UNSOLD' | 'BURNT' | 'RETURNED' | 'EXPIRED' | '';
+  reason?: "UNSOLD" | "BURNT" | "RETURNED" | "EXPIRED" | "";
   note?: string;
 }) {
-  const res = await authFetch('/api/kitchen/wastes/upsert/', {
-    method: 'POST',
+  const res = await authFetch("/api/kitchen/wastes/upsert/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -239,11 +251,14 @@ export async function getWasteSummary(params?: {
   menu_item?: number;
 }) {
   const qs = new URLSearchParams();
-  if (params?.date_from) qs.set('date_from', params.date_from);
-  if (params?.date_to) qs.set('date_to', params.date_to);
-  if (typeof params?.menu_item === 'number') qs.set('menu_item', String(params.menu_item));
+  if (params?.date_from) qs.set("date_from", params.date_from);
+  if (params?.date_to) qs.set("date_to", params.date_to);
+  if (typeof params?.menu_item === "number")
+    qs.set("menu_item", String(params.menu_item));
 
-  const res = await authFetch(`/api/kitchen/wastes/summary/${qs.toString() ? `?${qs.toString()}` : ''}`);
+  const res = await authFetch(
+    `/api/kitchen/wastes/summary/${qs.toString() ? `?${qs.toString()}` : ""}`,
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
   return data as {
@@ -252,9 +267,14 @@ export async function getWasteSummary(params?: {
   };
 }
 
-export async function getWasteVsSales(payload: { date_from: string; date_to: string }) {
+export async function getWasteVsSales(payload: {
+  date_from: string;
+  date_to: string;
+}) {
   const qs = new URLSearchParams(payload as Record<string, string>);
-  const res = await authFetch(`/api/kitchen/wastes/waste-vs-sales/?${qs.toString()}`);
+  const res = await authFetch(
+    `/api/kitchen/wastes/waste-vs-sales/?${qs.toString()}`,
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
   return data as {
@@ -269,8 +289,27 @@ export async function getWasteVsSales(payload: { date_from: string; date_to: str
   };
 }
 
+export async function syncAutoUnsoldWaste(payload?: {
+  date?: string;
+  menu_item_ids?: number[];
+}) {
+  const res = await authFetch("/api/kitchen/wastes/sync-auto-unsold/", {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as {
+    restaurant_id: number;
+    date: string;
+    synced_menu_item_count: number;
+    menu_item_ids?: number[];
+    detail?: string;
+  };
+}
+
 export async function listKitchenPurchaseRequests() {
-  const res = await authFetch('/api/kitchen/purchase-requests/');
+  const res = await authFetch("/api/kitchen/purchase-requests/");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<KitchenPurchaseRequest>(data);
@@ -285,7 +324,7 @@ export async function getKitchenPurchaseRequest(id: number) {
 
 export async function submitKitchenPurchaseRequest(id: number) {
   const res = await authFetch(`/api/kitchen/purchase-requests/${id}/submit/`, {
-    method: 'POST',
+    method: "POST",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
@@ -299,12 +338,15 @@ export async function convertKitchenPurchaseRequestToDraft(
     invoice_date?: string;
     invoice_no?: string;
     note?: string;
-  }
+  },
 ) {
-  const res = await authFetch(`/api/kitchen/purchase-requests/${id}/convert-to-purchase-draft/`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const res = await authFetch(
+    `/api/kitchen/purchase-requests/${id}/convert-to-purchase-draft/`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
   return data as { id: number };
