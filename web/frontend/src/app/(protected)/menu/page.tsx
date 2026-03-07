@@ -193,7 +193,7 @@ export default function MenuPage() {
   };
 
   return (
-    <main className="flex flex-col gap-6 p-6 md:p-8 max-w-[1600px] mx-auto w-full">
+    <main className="flex flex-col gap-6">
       {/* 1. Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-border/40 pb-6">
         <div className="space-y-1">
@@ -260,7 +260,7 @@ export default function MenuPage() {
       {/* 3. Controls Toolbar */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-          <div className="w-full lg:flex-1 max-w-7xl">
+          <div className="w-full lg:flex-1 max-w-8xl">
             <div className="flex items-center gap-2">
               <FilterButton
                 active={selectedCategory === null}
@@ -313,17 +313,18 @@ export default function MenuPage() {
 
               <Link href="/menu/category/add">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="h-7 text-xs rounded-full text-muted-foreground whitespace-nowrap"
+                  className="h-8 rounded-md border-border/60 bg-background/70 px-3 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/70 hover:text-foreground whitespace-nowrap"
                 >
-                  <Plus className="h-3 w-3 mr-1" /> Category
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  New Category
                 </Button>
               </Link>
             </div>
           </div>
           {/* Right Side: Search & View Toggle */}
-          <div className="flex items-center gap-2 w-full lg:w-auto">
+          <div className="flex items-center gap-2 w-full lg:w-auto ">
             <div className="relative flex-1 lg:w-64">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -444,7 +445,7 @@ function FilterButton({ active, onClick, label }: any) {
     <button
       onClick={onClick}
       className={cn(
-        "px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all border",
+        "px-3.5 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-all border",
         active
           ? "bg-primary text-primary-foreground border-primary shadow-sm"
           : "bg-background text-muted-foreground border-border hover:bg-muted/50",

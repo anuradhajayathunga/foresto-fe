@@ -88,6 +88,7 @@ export function DashboardHeader({
             <>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-1 duration-500">
                 {greeting}
+                <span className="text-slate-600 dark:text-slate-400">, </span>
                 {userLoading ? (
                   <span
                     className="ml-2 inline-block h-7 w-40 animate-pulse rounded-md bg-slate-600/10 align-middle dark:bg-slate-400/70"
@@ -95,7 +96,7 @@ export function DashboardHeader({
                   />
                 ) : displayName ? (
                   <>
-                    <span className="text-slate-600 dark:text-slate-400">, </span>
+                    
                     <span className="text-slate-600 dark:text-slate-400 capitalize">{displayName}</span>
                   </>
                 ) : (

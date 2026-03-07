@@ -378,7 +378,7 @@ export default function UnifiedForecastPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col gap-6">
       {/* 1. HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-border/40 pb-6">
         <div className="space-y-1">
