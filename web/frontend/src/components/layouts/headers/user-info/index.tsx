@@ -68,14 +68,14 @@ export function UserInfo() {
         <span className='sr-only'>My Account</span>
 
         <figure className='flex items-center gap-3'>
-          <figcaption className='flex flex-col items-end leading-tight max-[1024px]:hidden'>
+          {/* <figcaption className='flex flex-col items-end leading-tight max-[1024px]:hidden'>
             <span className='text-[11px] font-medium capitalize tracking-wide text-slate-500 dark:text-slate-400'>
               Welcome back,
             </span>
             <span className='text-sm font-semibold text-slate-900 dark:text-slate-50 capitalize truncate max-w-[120px]'>
               {user?.username}
             </span>
-          </figcaption>
+          </figcaption> */}
 
           <div className='relative'>
             <Image

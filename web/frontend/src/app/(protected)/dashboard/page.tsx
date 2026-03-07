@@ -9,6 +9,7 @@ import { SalesOverview } from "./_components/sales-overview";
 import { DashboardHeader } from "./_components/dashboard-header";
 import { DashboardDataProvider } from "./_components/dashboard-data-context";
 import { AlertsRow, ActivityRow } from "./_components/dashboard-widgets";
+import { DashboardCalendar } from "./_components/dashboard-calendar";
 import { QuickActionsRow } from "./_components/quick-actions";
 
 type PropsType = {
@@ -26,11 +27,7 @@ export default async function Home({ searchParams }: PropsType) {
     <main>
       {/* Full-width Header with Cover Image */}
       <div className="w-full px-8">
-        <DashboardHeader
-          illustration="/images/illustration/Business Plan.svg"
-          darkIllustration="/images/illustration/Business Plan.svg"
-          showIllustration={true}
-        />
+        <DashboardHeader />
       </div>
 
       {/* Content Section */}
@@ -51,7 +48,8 @@ export default async function Home({ searchParams }: PropsType) {
               </div>
 
               <div className="lg:col-span-4 flex flex-col gap-6 xl:gap-8">
-                <ActivityRow />
+                <DashboardCalendar />
+                {/* <ActivityRow /> */}
                 <WeeksProfit
                   key={extractTimeFrame("weeks_profit")}
                   timeFrame={extractTimeFrame("weeks_profit")?.split(":")[1]}
