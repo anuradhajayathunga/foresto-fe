@@ -241,6 +241,27 @@ python manage.py runserver
 # API usually available at: http://127.0.0.1:8000/
 ```
 
+### End-Of-Day Auto Waste Sync
+
+Automatically calculates unsold waste as `prepared_qty - paid_sales_qty` and stores it as kitchen waste.
+
+```bash
+# default target date = yesterday (recommended for 2:00 AM scheduler runs)
+python manage.py sync_unsold_waste_eod
+
+# run for a specific date
+python manage.py sync_unsold_waste_eod --date 2026-03-06
+
+# dry-run (no DB writes)
+python manage.py sync_unsold_waste_eod --dry-run
+```
+
+Example crontab entry for `2:00 AM` daily:
+
+```bash
+0 2 * * * cd /path/to/foresto-web-app/web/backend && /path/to/venv/bin/python manage.py sync_unsold_waste_eod >> /var/log/foresto_waste_sync.log 2>&1
+```
+
 ### Collect Static (Production)
 
 ```bash

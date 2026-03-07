@@ -1070,7 +1070,7 @@ export default function UnifiedForecastPage() {
             <Button
               size="sm"
               variant='outline'
-              onClick={() => router.push("/forecast-accuracy")}
+              onClick={() => router.push("forecasting/forecast-accuracy")}
             >
               View 
             </Button>
