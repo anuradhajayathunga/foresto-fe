@@ -140,3 +140,11 @@ STATIC_URL = "static/"
 FORECAST_MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# WhatsApp Cloud API (Meta)
+WHATSAPP_ENABLED = env.bool("WHATSAPP_ENABLED", default=False)
+WHATSAPP_API_BASE = env("WHATSAPP_API_BASE", default="https://graph.facebook.com")
+WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", default="v21.0")
+WHATSAPP_PHONE_NUMBER_ID = env("WHATSAPP_PHONE_NUMBER_ID", default="")
+WHATSAPP_ACCESS_TOKEN = env("WHATSAPP_ACCESS_TOKEN", default="")
+WHATSAPP_DEFAULT_COUNTRY_CODE = env("WHATSAPP_DEFAULT_COUNTRY_CODE", default="")

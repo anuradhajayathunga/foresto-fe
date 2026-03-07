@@ -7,6 +7,7 @@ import {
   PurchaseInvoice,
   exportPurchasesCsv,
   confirmPurchaseInvoice,
+  sendPurchaseInvoiceWhatsApp,
   voidPurchaseInvoice,
 } from "@/lib/purchases";
 import {
@@ -26,6 +27,7 @@ import {
   CheckCircle2,
   CircleSlash,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -129,6 +131,18 @@ export default function PurchasesPage() {
       const msg = getErrorMessage(e);
       setVoidErr(msg);
       toast.error(msg);
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleSendWhatsApp(invoice: PurchaseInvoice) {
+    setActionLoadingId(invoice.id);
+    try {
+      const res = await sendPurchaseInvoiceWhatsApp(String(invoice.id));
+      toast.success(`WhatsApp order sent to ${res.to}`);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e));
     } finally {
       setActionLoadingId(null);
     }
@@ -438,6 +452,20 @@ export default function PurchasesPage() {
                             <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-600" />
                           )}
                           Confirm Invoice
+                        </DropdownMenuItem>
+                      )}
+                      {p.status !== "VOID" && p.status !== "DRAFT" && (
+                        <DropdownMenuItem
+                          className="cursor-pointer flex items-center"
+                          disabled={actionLoadingId === p.id}
+                          onClick={() => void handleSendWhatsApp(p)}
+                        >
+                          {actionLoadingId === p.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin text-emerald-600" />
+                          ) : (
+                            <MessageCircle className="h-4 w-4 mr-2 text-emerald-600" />
+                          )}
+                          Send WhatsApp Order
                         </DropdownMenuItem>
                       )}
                       {p.status !== "VOID" && (

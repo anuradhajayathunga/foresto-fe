@@ -160,3 +160,7 @@ class PurchaseDraftFromForecastSerializer(serializers.Serializer):
     invoice_date = serializers.DateField(required=False)
     note = serializers.CharField(required=False, allow_blank=True)
     restaurant_id = serializers.IntegerField(required=False)
+
+
+class PurchaseWhatsAppSendSerializer(serializers.Serializer):
+    message = serializers.CharField(required=False, allow_blank=True, max_length=2000)

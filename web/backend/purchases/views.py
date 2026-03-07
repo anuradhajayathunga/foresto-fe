@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.http import HttpResponse
+from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import mixins, status, viewsets
@@ -21,8 +22,14 @@ from .serializers import (
     PurchaseDraftFromForecastSerializer,
     PurchaseInvoiceCreateSerializer,
     PurchaseInvoiceOutSerializer,
+    PurchaseWhatsAppSendSerializer,
     PurchaseVoidSerializer,
     SupplierSerializer,
+)
+from .services_whatsapp import (
+    build_purchase_whatsapp_message,
+    normalize_whatsapp_phone,
+    send_whatsapp_text_message,
 )
 
 
@@ -370,3 +377,48 @@ class PurchaseInvoiceViewSet(
 
         out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="send-whatsapp-order")
+    def send_whatsapp_order(self, request, pk=None):
+        """
+        POST /api/purchases/invoices/{id}/send-whatsapp-order/
+        Sends supplier purchase order summary as a WhatsApp message.
+        Optional payload: {"message": "custom text"}
+        """
+        invoice = self.get_object()
+
+        if invoice.status == PurchaseInvoice.Status.DRAFT:
+            raise ValidationError({"detail": "Cannot send WhatsApp message for DRAFT invoice."})
+
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "Cannot send WhatsApp message for VOID invoice."})
+
+        supplier_phone = (invoice.supplier.phone or "").strip()
+        normalized_phone = normalize_whatsapp_phone(
+            supplier_phone,
+            default_country_code=getattr(settings, "WHATSAPP_DEFAULT_COUNTRY_CODE", ""),
+        )
+        if not normalized_phone:
+            raise ValidationError({"detail": "Supplier phone number is missing or invalid."})
+
+        payload = PurchaseWhatsAppSendSerializer(data=request.data or {})
+        payload.is_valid(raise_exception=True)
+        custom_message = (payload.validated_data.get("message") or "").strip()
+
+        message_text = custom_message or build_purchase_whatsapp_message(invoice)
+
+        try:
+            provider_response = send_whatsapp_text_message(normalized_phone, message_text)
+        except RuntimeError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        return Response(
+            {
+                "success": True,
+                "invoice_id": invoice.id,
+                "supplier": invoice.supplier.name,
+                "to": normalized_phone,
+                "provider_response": provider_response,
+            },
+            status=status.HTTP_200_OK,
+        )

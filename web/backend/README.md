@@ -34,13 +34,13 @@ The backend is designed to integrate with the **Foresto Next.js frontend** and e
 This repository contains the backend API for the **SmartRestaurant AI System (Foresto)**.
 
 It enables:
+
 - Core restaurant workflows (CRUD + validations) for **items/products**, **suppliers**, **purchases**, **inventory**, and **sales**
 - Aggregated analytics endpoints (KPIs, charts, summaries)
 - AI/ML endpoints for **forecasting** (trigger training, generate forecasts, view results/history)
 - Secure authentication for staff/admin users
 
 Django officially supports PostgreSQL as a primary database backend. :contentReference[oaicite:0]{index=0}
-
 
 ## Key Features
 
@@ -51,8 +51,6 @@ Django officially supports PostgreSQL as a primary database backend. :contentRef
 - Forecasting module (train + predict + results/history)
 - Optional async processing using Redis + Celery (recommended for long forecasting jobs)
 
-
-
 ## Tech Stack
 
 - **Backend Framework**: Django
@@ -61,8 +59,6 @@ Django officially supports PostgreSQL as a primary database backend. :contentRef
 - **Auth**: JWT (commonly via `djangorestframework-simplejwt`) :contentReference[oaicite:1]{index=1}
 - **CORS**: `django-cors-headers` :contentReference[oaicite:2]{index=2}
 - **Async / Queue (Optional)**: Redis + Celery (recommended for ML training jobs)
-
-
 
 ## Architecture Diagram
 
@@ -98,22 +94,22 @@ flowchart TB
 
 ### System Requirements
 
-* **Python**: 3.10+ (recommended)
-* **PostgreSQL**: 14+ (recommended)
-* **pip**: latest
-* **Optional**: Redis (if using Celery/background jobs)
+- **Python**: 3.10+ (recommended)
+- **PostgreSQL**: 14+ (recommended)
+- **pip**: latest
+- **Optional**: Redis (if using Celery/background jobs)
 
 ### Python Packages
 
 Your full dependency list is in `requirements.txt`.
 Common packages in a DRF + PostgreSQL stack often include:
 
-* `Django`
-* `djangorestframework`
-* `psycopg2-binary` (PostgreSQL driver)
-* `django-cors-headers` ([PyPI][1])
-* `djangorestframework-simplejwt` ([PyPI][2])
-* (Optional) `celery`, `redis`, `django-celery-results`, `django-celery-beat`
+- `Django`
+- `djangorestframework`
+- `psycopg2-binary` (PostgreSQL driver)
+- `django-cors-headers` ([PyPI][1])
+- `djangorestframework-simplejwt` ([PyPI][2])
+- (Optional) `celery`, `redis`, `django-celery-results`, `django-celery-beat`
 
 ---
 
@@ -144,8 +140,6 @@ env\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-
-
 ## Database Setup (PostgreSQL)
 
 ### 1) Create Database + User
@@ -166,8 +160,6 @@ GRANT ALL PRIVILEGES ON DATABASE foresto_db TO foresto_user;
 ### 2) Configure Django to Use PostgreSQL
 
 Django supports PostgreSQL through the `django.db.backends.postgresql` engine setting. ([Django Project][3])
-
-
 
 ## Environment Variables
 
@@ -199,7 +191,33 @@ JWT_REFRESH_LIFETIME_DAYS=7
 REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+# WhatsApp Cloud API (Meta)
+WHATSAPP_ENABLED=true
+WHATSAPP_API_BASE=https://graph.facebook.com
+WHATSAPP_API_VERSION=v21.0
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_permanent_access_token
+WHATSAPP_DEFAULT_COUNTRY_CODE=94
 ```
+
+### Send Purchase Order to Supplier via WhatsApp
+
+Endpoint:
+
+```text
+POST /api/purchases/invoices/{id}/send-whatsapp-order/
+```
+
+Optional payload:
+
+```json
+{
+  "message": "Custom message body"
+}
+```
+
+If `message` is omitted, the backend auto-generates a purchase-order summary from invoice lines.
 
 ## Available Commands
 
@@ -229,7 +247,6 @@ python manage.py runserver
 python manage.py collectstatic
 ```
 
-
 ## Project Structure
 
 ```text
@@ -257,39 +274,35 @@ foresto-be/
 
 Local development (default):
 
-* `http://127.0.0.1:8000/`
+- `http://127.0.0.1:8000/`
 
 Recommended API prefix:
 
-* `/api/`
+- `/api/`
 
 ### Typical Modules (Example)
-* **Auth**
 
-  * `POST /api/auth/login/`
-  * `POST /api/auth/refresh/`
-  * `GET  /api/auth/me/`
+- **Auth**
+  - `POST /api/auth/login/`
+  - `POST /api/auth/refresh/`
+  - `GET  /api/auth/me/`
 
-* **Suppliers**
+- **Suppliers**
+  - `GET/POST /api/suppliers/`
+  - `GET/PUT/DELETE /api/suppliers/{id}/`
 
-  * `GET/POST /api/suppliers/`
-  * `GET/PUT/DELETE /api/suppliers/{id}/`
+- **Purchases**
+  - `GET/POST /api/purchases/invoices/`
+  - `GET/POST /api/purchases/invoice-items/`
 
-* **Purchases**
+- **Inventory**
+  - `GET/POST /api/inventory/items/`
+  - `GET/POST /api/inventory/stock-movements/`
 
-  * `GET/POST /api/purchases/invoices/`
-  * `GET/POST /api/purchases/invoice-items/`
-
-* **Inventory**
-
-  * `GET/POST /api/inventory/items/`
-  * `GET/POST /api/inventory/stock-movements/`
-
-* **Forecasting**
-
-  * `POST /api/forecasting/train/`
-  * `GET  /api/forecasting/forecasts/`
-  * `GET  /api/forecasting/forecasts/{id}/history/`
+- **Forecasting**
+  - `POST /api/forecasting/train/`
+  - `GET  /api/forecasting/forecasts/`
+  - `GET  /api/forecasting/forecasts/{id}/history/`
 
 ---
 
@@ -309,22 +322,20 @@ Most DRF + Next.js stacks use **JWT** (access + refresh) for API calls; Simple J
 If your frontend runs on `http://localhost:3000`, configure CORS to allow that origin.
 `django-cors-headers` is widely used for this. ([PyPI][1])
 
-
-
 ## Forecasting & Background Jobs
 
 Forecasting training can be slow. Recommended approaches:
 
 ### Option A: Run Training Synchronously (Simple)
 
-* Easiest for demos
-* Not ideal for production (request may timeout)
+- Easiest for demos
+- Not ideal for production (request may timeout)
 
 ### Option B: Run Training Asynchronously (Recommended)
 
-* Use **Celery** workers with **Redis** as a broker
-* API triggers a task, immediately returns a task/job id
-* Frontend polls job status or reads results when ready
+- Use **Celery** workers with **Redis** as a broker
+- API triggers a task, immediately returns a task/job id
+- Frontend polls job status or reads results when ready
 
 (If you use Celery + Redis, keep broker URLs in environment variables.)
 
@@ -348,8 +359,8 @@ black --check .
 
 Recommended:
 
-* Add GitHub Actions CI for `test + lint`
-* Use pre-commit hooks for formatting/linting
+- Add GitHub Actions CI for `test + lint`
+- Use pre-commit hooks for formatting/linting
 
 ---
 
@@ -357,12 +368,12 @@ Recommended:
 
 ### Production Checklist (Typical)
 
-* `DJANGO_DEBUG=False`
-* Strong `DJANGO_SECRET_KEY`
-* Configure `ALLOWED_HOSTS`
-* Set secure CORS origins
-* Use PostgreSQL (managed DB if possible)
-* Serve with Gunicorn/Uvicorn behind Nginx (or a PaaS)
+- `DJANGO_DEBUG=False`
+- Strong `DJANGO_SECRET_KEY`
+- Configure `ALLOWED_HOSTS`
+- Set secure CORS origins
+- Use PostgreSQL (managed DB if possible)
+- Serve with Gunicorn/Uvicorn behind Nginx (or a PaaS)
 
 ---
 
@@ -370,12 +381,12 @@ Recommended:
 
 ### Branching Strategy (Git Flow Inspired)
 
-* `main` → Production-ready
-* `develop` → Integration branch
-* `feature/*` → Feature branches
-* `bugfix/*` → Bug fix branches
-* `hotfix/*` → Urgent production fixes
-* `release/*` → Release preparation
+- `main` → Production-ready
+- `develop` → Integration branch
+- `feature/*` → Feature branches
+- `bugfix/*` → Bug fix branches
+- `hotfix/*` → Urgent production fixes
+- `release/*` → Release preparation
 
 ### Pull Request Workflow
 
@@ -428,36 +439,30 @@ git push origin feature/your-feature
 
 5. Open a PR to `develop`
 
-
 ## Related Repositories
 
-* **Frontend Repository:** `foresto-fe` (https://github.com/anuradhajayathunga/foresto-fe.git)
-* **Backend Repository:** `foresto-be` (https://github.com/anuradhajayathunga/foresto-be.git)
-
-
+- **Frontend Repository:** `foresto-fe` (https://github.com/anuradhajayathunga/foresto-fe.git)
+- **Backend Repository:** `foresto-be` (https://github.com/anuradhajayathunga/foresto-be.git)
 
 ## License
 
 Academic final year project at **Sri Lanka Institute of Information Technology**.
 **License:** MIT
 
-
-
 ## Maintainers & Team
 
-* Member 1: [JAYATHUNGA A G I A](https://github.com/anuradhajayathunga)
-* Member 2: [THILAKARATHNAW P N S](https://github.com/NethumThilakarathna)
-* Member 3: [ALAWATHTHA K A](https://github.com/AlawaththaKA)
-* Member 4: [Fernando W G P N](https://github.com/PraveenNavodya)
-
-
+- Member 1: [JAYATHUNGA A G I A](https://github.com/anuradhajayathunga)
+- Member 2: [THILAKARATHNAW P N S](https://github.com/NethumThilakarathna)
+- Member 3: [ALAWATHTHA K A](https://github.com/AlawaththaKA)
+- Member 4: [Fernando W G P N](https://github.com/PraveenNavodya)
 
 ## Support
+
 For issues, questions, or contributions:
+
 1. Check existing [Issues](https://github.com/anuradhajayathunga/foresto-be/issues)
 2. Create a new Issue with detailed description
 3. Email: hi.foresto@gmail.com (if applicable)
 
-* Use GitHub Issues for bugs/tasks
-* Provide clear reproduction steps + screenshots/logs
-
+- Use GitHub Issues for bugs/tasks
+- Provide clear reproduction steps + screenshots/logs
