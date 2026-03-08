@@ -11,6 +11,8 @@ export type IngredientPlan = {
     unit: string;
     current_stock: string;
     reorder_level: string;
+    buffer_size?: string;
+    target_stock_level?: string;
     required_qty: string;
     projected_remaining: string;
     status: "OK" | "LOW" | "OUT";
@@ -84,6 +86,8 @@ export async function getIngredientPlan(scope: "tomorrow" | "next7" = "next7", h
       unit: string;
       current_stock: string;
       reorder_level: string;
+      buffer_size?: string;
+      target_stock_level?: string;
       required_qty: string;
       projected_remaining: string;
       status: "OK" | "LOW" | "OUT";

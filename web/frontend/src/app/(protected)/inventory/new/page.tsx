@@ -54,6 +54,7 @@ export default function NewInventoryItemPage() {
     sku: string;
     unit: Unit;
     reorder_level: string;
+    buffer_size: string;
     cost_per_unit: string;
     is_active: boolean;
   }>({
@@ -61,6 +62,7 @@ export default function NewInventoryItemPage() {
     sku: "",
     unit: "PCS",
     reorder_level: "10", // Smart default
+    buffer_size: "0",
     cost_per_unit: "",
     is_active: true,
   });
@@ -85,6 +87,7 @@ export default function NewInventoryItemPage() {
         ...form,
         unit: form.unit,
         reorder_level: form.reorder_level || "0",
+        buffer_size: form.buffer_size || "0",
         cost_per_unit: form.cost_per_unit || "0",
       });
       router.push("/inventory");
@@ -268,6 +271,26 @@ export default function NewInventoryItemPage() {
                   <p className="text-[11px] text-muted-foreground leading-tight">
                     System will flag this item as "Low Stock" when quantity
                     drops below this number.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Buffer Size</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      className="font-mono"
+                      value={form.buffer_size}
+                      onChange={(e) =>
+                        setForm({ ...form, buffer_size: e.target.value })
+                      }
+                    />
+                    <div className="flex items-center px-3 border rounded-md text-sm text-gray-500 font-medium">
+                      {form.unit}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-tight">
+                    Extra safety stock used by ingredient planning when suggesting purchases.
                   </p>
                 </div>
 

@@ -204,6 +204,7 @@ class ImportCSVView(APIView):
           name (required)
           unit (required)
           reorder_level (optional)
+                    buffer_size (optional)
           cost_per_unit (optional)
           current_stock (optional)  <-- updates stock directly (NO movements)
           is_active (optional)
@@ -226,6 +227,7 @@ class ImportCSVView(APIView):
                     raise ValueError("unit is required")
 
                 reorder_level = to_decimal(row.get("reorder_level"), default="0.00")
+                buffer_size = to_decimal(row.get("buffer_size"), default="0.00")
                 cost_per_unit = to_decimal(row.get("cost_per_unit"), default="0.00")
                 is_active = to_bool(row.get("is_active"), default=True)
 
@@ -233,6 +235,7 @@ class ImportCSVView(APIView):
                     "name": name,
                     "unit": unit,
                     "reorder_level": reorder_level,
+                    "buffer_size": buffer_size,
                     "cost_per_unit": cost_per_unit,
                     "is_active": is_active,
                 }
@@ -581,7 +584,7 @@ class DownloadCSVTemplateView(APIView):
             ],
             "ingredients": [
                 "sku", "name", "unit", "reorder_level", 
-                "cost_per_unit", "current_stock", "is_active"
+                "buffer_size", "cost_per_unit", "current_stock", "is_active"
             ],
             "recipes": [
                 "menu_item_slug", "menu_category_slug", "ingredient_sku", "qty"
@@ -622,7 +625,7 @@ class DownloadCSVTemplateView(APIView):
         elif kind == "menu_items":
             writer.writerow(["Chicken Soup", "Starters", "", "Delicious soup", "5.00", "true", "1"])
         elif kind == "ingredients":
-            writer.writerow(["FLOUR-001", "Wheat Flour", "kg", "10", "1.50", "100", "true"])
+            writer.writerow(["FLOUR-001", "Wheat Flour", "kg", "10", "2", "1.50", "100", "true"])
         elif kind == "recipes":
             writer.writerow(["chicken-soup", "starters", "FLOUR-001", "0.2"])
 

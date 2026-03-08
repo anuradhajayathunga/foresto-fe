@@ -7,6 +7,7 @@ export type InventoryItem = {
   unit: string;
   current_stock: string;
   reorder_level: string;
+  buffer_size: string;
   cost_per_unit?: string;
   is_active: boolean;
 };
@@ -37,6 +38,7 @@ export async function createInventoryItem(payload: {
   unit: string;
   current_stock?: string;
   reorder_level?: string;
+  buffer_size?: string;
   cost_per_unit?: string;
   is_active?: boolean;
 }) {
