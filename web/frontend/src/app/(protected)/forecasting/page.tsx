@@ -1236,7 +1236,9 @@ export default function UnifiedForecastPage() {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setPlanPage((p) => Math.min(planTotalPages, p + 1))}
+                onClick={() =>
+                  setPlanPage((p) => Math.min(planTotalPages, p + 1))
+                }
                 disabled={planPage >= planTotalPages}
                 aria-label="Next purchase plan page"
               >
