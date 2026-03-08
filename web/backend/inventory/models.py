@@ -23,6 +23,7 @@ class InventoryItem(models.Model):
     )
     current_stock = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     reorder_level = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    buffer_size = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     cost_per_unit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     is_active = models.BooleanField(default=True)

@@ -33,6 +33,8 @@ import {
   AlertCircle,
   Send,
   Type,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -77,8 +79,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function PurchasesPage() {
+  const purchaseRowsPerPage = 12;
   const [rows, setRows] = useState<PurchaseInvoice[]>([]);
   const [search, setSearch] = useState("");
+  const [purchasePage, setPurchasePage] = useState(1);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
@@ -195,6 +199,27 @@ export default function PurchasesPage() {
     );
     return filteredRows.sort((a, b) => b.id - a.id);
   }, [rows, search]);
+
+  const purchaseTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / purchaseRowsPerPage)),
+    [filtered.length, purchaseRowsPerPage],
+  );
+
+  const paginatedPurchases = useMemo(() => {
+    const start = (purchasePage - 1) * purchaseRowsPerPage;
+    return filtered.slice(start, start + purchaseRowsPerPage);
+  }, [filtered, purchasePage, purchaseRowsPerPage]);
+
+  useEffect(() => {
+    setPurchasePage((prev) => Math.min(prev, purchaseTotalPages));
+  }, [purchaseTotalPages]);
+
+  const purchasePageStart =
+    filtered.length === 0 ? 0 : (purchasePage - 1) * purchaseRowsPerPage + 1;
+  const purchasePageEnd =
+    filtered.length === 0
+      ? 0
+      : Math.min(purchasePage * purchaseRowsPerPage, filtered.length);
 
   // --- Metrics Calculation ---
   const metrics = useMemo(() => {
@@ -414,7 +439,7 @@ export default function PurchasesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((p) => (
+            {paginatedPurchases.map((p) => (
               <TableRow
                 key={p.id}
                 className="hover:bg-muted/40 transition-colors group cursor-pointer"
@@ -562,7 +587,7 @@ export default function PurchasesPage() {
 
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="h-64 text-center">
+                <TableCell colSpan={7} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="rounded-full bg-muted p-4">
                       <Search className="h-6 w-6 text-muted-foreground/50" />
@@ -590,6 +615,39 @@ export default function PurchasesPage() {
             )}
           </TableBody>
         </Table>
+
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3 sm:px-6">
+          <p className="text-xs text-muted-foreground">
+            Showing {purchasePageStart}-{purchasePageEnd} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setPurchasePage((p) => Math.max(1, p - 1))}
+              disabled={purchasePage <= 1}
+              aria-label="Previous purchases page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-16 text-center text-xs text-muted-foreground">
+              {purchasePage}/{purchaseTotalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() =>
+                setPurchasePage((p) => Math.min(purchaseTotalPages, p + 1))
+              }
+              disabled={purchasePage >= purchaseTotalPages}
+              aria-label="Next purchases page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       <Dialog

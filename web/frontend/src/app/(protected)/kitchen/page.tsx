@@ -79,6 +79,8 @@ import {
   ArrowLeftRight,
   Plus,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import toast from "react-hot-toast";
@@ -182,6 +184,7 @@ export default function KitchenPage() {
   const [rowAlertLineSelected, setRowAlertLineSelected] = useState<
     Record<number, boolean>
   >({});
+  const [rowAlertPage, setRowAlertPage] = useState(1);
 
   // Forecast State
   const [forecastDate, setForecastDate] = useState<string>(() => tomorrowISO());
@@ -893,16 +896,40 @@ export default function KitchenPage() {
 
   // --- UI Components ---
   const ingredientAlerts = planAlerts?.ingredient_alerts || [];
+  const rowAlertRowsPerPage = 12;
   const rowIngredientAlerts = rowPlanAlerts?.ingredient_alerts || [];
-  const rowSelectedCount = rowIngredientAlerts.filter((alert) =>
+  const rowAlertTotalPages = Math.max(
+    1,
+    Math.ceil(rowIngredientAlerts.length / rowAlertRowsPerPage),
+  );
+  const paginatedRowIngredientAlerts = rowIngredientAlerts.slice(
+    (rowAlertPage - 1) * rowAlertRowsPerPage,
+    rowAlertPage * rowAlertRowsPerPage,
+  );
+  const rowPageSelectedCount = paginatedRowIngredientAlerts.filter((alert) =>
     Boolean(rowAlertLineSelected[alert.item_id]),
   ).length;
   const allRowSelected =
-    rowIngredientAlerts.length > 0 &&
-    rowSelectedCount === rowIngredientAlerts.length;
-  const someRowSelected = rowSelectedCount > 0 && !allRowSelected;
+    paginatedRowIngredientAlerts.length > 0 &&
+    rowPageSelectedCount === paginatedRowIngredientAlerts.length;
+  const someRowSelected = rowPageSelectedCount > 0 && !allRowSelected;
+  const rowAlertPageStart =
+    rowIngredientAlerts.length === 0
+      ? 0
+      : (rowAlertPage - 1) * rowAlertRowsPerPage + 1;
+  const rowAlertPageEnd =
+    rowIngredientAlerts.length === 0
+      ? 0
+      : Math.min(
+          rowAlertPage * rowAlertRowsPerPage,
+          rowIngredientAlerts.length,
+        );
   const selectedMenuItemName =
     items.find((item) => String(item.id) === prodMenuItem)?.name || "-";
+
+  useEffect(() => {
+    setRowAlertPage((prev) => Math.min(prev, rowAlertTotalPages));
+  }, [rowAlertTotalPages]);
 
   return (
     <div className=" w-full space-y-8">
@@ -2059,12 +2086,19 @@ export default function KitchenPage() {
                                   onCheckedChange={(checked) => {
                                     const next: Record<number, boolean> = {};
                                     const isChecked = Boolean(checked);
-                                    rowIngredientAlerts.forEach((alert) => {
-                                      next[alert.item_id] = isChecked;
-                                    });
-                                    setRowAlertLineSelected(next);
+                                    paginatedRowIngredientAlerts.forEach(
+                                      (alert) => {
+                                        next[alert.item_id] = isChecked;
+                                      },
+                                    );
+                                    setRowAlertLineSelected((prev) => ({
+                                      ...prev,
+                                      ...next,
+                                    }));
                                   }}
-                                  disabled={rowIngredientAlerts.length === 0}
+                                  disabled={
+                                    paginatedRowIngredientAlerts.length === 0
+                                  }
                                 />
                               </TableHead>
                               <TableHead className="h-8 text-xs">
@@ -2085,7 +2119,7 @@ export default function KitchenPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {rowIngredientAlerts.map((alert) => (
+                            {paginatedRowIngredientAlerts.map((alert) => (
                               <TableRow key={alert.item_id}>
                                 <TableCell className="text-center">
                                   <Checkbox
@@ -2151,6 +2185,46 @@ export default function KitchenPage() {
                             ))}
                           </TableBody>
                         </Table>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          Showing {rowAlertPageStart}-{rowAlertPageEnd} of{" "}
+                          {rowIngredientAlerts.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              setRowAlertPage((p) => Math.max(1, p - 1))
+                            }
+                            disabled={rowAlertPage <= 1}
+                            aria-label="Previous ingredient alerts page"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="min-w-16 text-center text-xs text-muted-foreground">
+                            {rowAlertPage}/{rowAlertTotalPages}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              setRowAlertPage((p) =>
+                                Math.min(rowAlertTotalPages, p + 1),
+                              )
+                            }
+                            disabled={rowAlertPage >= rowAlertTotalPages}
+                            aria-label="Next ingredient alerts page"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </>
                   ) : (

@@ -97,10 +97,12 @@ def build_ingredient_plan(
 
         current = D(item.current_stock)
         reorder = D(item.reorder_level)
+        buffer_size = D(getattr(item, "buffer_size", 0))
+        target_stock = (reorder + buffer_size).quantize(Decimal("0.01"))
         projected_remaining = (current - required).quantize(Decimal("0.01"))
 
-        ok = projected_remaining >= reorder
-        suggested_purchase = required + reorder - current
+        ok = projected_remaining >= target_stock
+        suggested_purchase = required + target_stock - current
         if suggested_purchase < 0:
             suggested_purchase = Decimal("0.00")
         suggested_purchase = suggested_purchase.quantize(Decimal("0.01"))
@@ -115,6 +117,8 @@ def build_ingredient_plan(
                 "unit": item.unit,
                 "current_stock": str(current),
                 "reorder_level": str(reorder),
+                "buffer_size": str(buffer_size.quantize(Decimal("0.01"))),
+                "target_stock_level": str(target_stock),
                 "required_qty": str(required.quantize(Decimal("0.01"))),
                 "projected_remaining": str(projected_remaining),
                 "status": status,

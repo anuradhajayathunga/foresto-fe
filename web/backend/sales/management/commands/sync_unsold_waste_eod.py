@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from accounts.models import Restaurant
+from inventory.services_buffer import update_buffer_sizes_from_waste_rates
 from sales.business_rules import (
     get_menu_item_ids_for_waste_sync_for_date,
     sync_auto_unsold_waste_for_date,
@@ -40,10 +41,37 @@ class Command(BaseCommand):
             action="store_true",
             help="Show what would be synced without writing changes.",
         )
+        parser.add_argument(
+            "--skip-buffer-update",
+            action="store_true",
+            help="Skip automatic buffer_size recalculation after waste sync.",
+        )
+        parser.add_argument(
+            "--buffer-lookback-days",
+            type=int,
+            default=14,
+            help="Lookback window in days used for automatic buffer updates.",
+        )
+        parser.add_argument(
+            "--buffer-days",
+            type=int,
+            default=3,
+            help="How many days of average waste to keep as buffer_size.",
+        )
+        parser.add_argument(
+            "--buffer-alpha",
+            type=float,
+            default=0.6,
+            help="Smoothing factor (0-1) for buffer updates.",
+        )
 
     def handle(self, *args, **options):
         target_date = self._parse_target_date(options.get("date"))
         dry_run = bool(options.get("dry_run"))
+        update_buffers = not bool(options.get("skip_buffer_update"))
+        buffer_lookback_days = int(options.get("buffer_lookback_days") or 14)
+        buffer_days = int(options.get("buffer_days") or 3)
+        buffer_alpha = float(options.get("buffer_alpha") or 0.6)
         include_inactive = bool(options.get("include_inactive"))
         restaurant_ids = options.get("restaurant_ids") or []
 
@@ -65,6 +93,7 @@ class Command(BaseCommand):
 
         processed = 0
         skipped = 0
+        buffer_updates_total = 0
 
         for restaurant in restaurants_qs.iterator():
             menu_item_ids = get_menu_item_ids_for_waste_sync_for_date(
@@ -88,14 +117,35 @@ class Command(BaseCommand):
                 target_date=target_date,
                 menu_item_ids=menu_item_ids,
             )
+
+            if update_buffers:
+                buffer_result = update_buffer_sizes_from_waste_rates(
+                    restaurant_id=restaurant.id,
+                    lookback_days=buffer_lookback_days,
+                    buffer_days=buffer_days,
+                    alpha=buffer_alpha,
+                    dry_run=dry_run,
+                )
+                buffer_updates_total += int(buffer_result.get("updated", 0))
+
             processed += 1
             self.stdout.write(
                 f"- restaurant_id={restaurant.id}: synced {len(menu_item_ids)} menu item(s) for {target_date}"
+                + (
+                    f"; buffer updates={buffer_result.get('updated', 0)}"
+                    if update_buffers
+                    else ""
+                )
             )
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Finished unsold waste sync. processed={processed}, skipped={skipped}, target_date={target_date}."
+                + (
+                    f" total_buffer_updates={buffer_updates_total}."
+                    if update_buffers
+                    else ""
+                )
             )
         )
 

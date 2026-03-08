@@ -18,6 +18,7 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             "unit",
             "current_stock",
             "reorder_level",
+            "buffer_size",
             "cost_per_unit",
             "is_active",
             "created_at",

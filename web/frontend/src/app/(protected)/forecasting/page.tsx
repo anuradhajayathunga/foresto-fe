@@ -65,6 +65,8 @@ import {
   MoreHorizontal,
   ArrowRight,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Area,
@@ -142,6 +144,7 @@ export default function UnifiedForecastPage() {
   const [chartsReady, setChartsReady] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [selectedChartId, setSelectedChartId] = useState<string>("");
+  const [planPage, setPlanPage] = useState(1);
 
   // --- Dialog State ---
   const [draftOpen, setDraftOpen] = useState(false);
@@ -267,6 +270,28 @@ export default function UnifiedForecastPage() {
       (x) => x.status === "OUT" || x.status === "LOW",
     );
   }, [planData]);
+
+  const planRowsPerPage = 12;
+  const planIngredients = planData?.ingredients || [];
+  const planTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(planIngredients.length / planRowsPerPage)),
+    [planIngredients.length],
+  );
+  const paginatedPlanIngredients = useMemo(() => {
+    const start = (planPage - 1) * planRowsPerPage;
+    return planIngredients.slice(start, start + planRowsPerPage);
+  }, [planIngredients, planPage]);
+
+  useEffect(() => {
+    setPlanPage((prev) => Math.min(prev, planTotalPages));
+  }, [planTotalPages]);
+
+  const planPageStart =
+    planIngredients.length === 0 ? 0 : (planPage - 1) * planRowsPerPage + 1;
+  const planPageEnd =
+    planIngredients.length === 0
+      ? 0
+      : Math.min(planPage * planRowsPerPage, planIngredients.length);
 
   async function createDraft() {
     if (!supplierId) {
@@ -1117,7 +1142,7 @@ export default function UnifiedForecastPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {planData?.ingredients?.map((x) => (
+              {paginatedPlanIngredients.map((x) => (
                 <TableRow
                   key={x.ingredient_id}
                   className="group hover:bg-muted/30"
@@ -1188,6 +1213,39 @@ export default function UnifiedForecastPage() {
               )}
             </TableBody>
           </Table>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3 sm:px-6">
+            <p className="text-xs text-muted-foreground">
+              Showing {planPageStart}-{planPageEnd} of {planIngredients.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPlanPage((p) => Math.max(1, p - 1))}
+                disabled={planPage <= 1}
+                aria-label="Previous purchase plan page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-16 text-center text-xs text-muted-foreground">
+                {planPage}/{planTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  setPlanPage((p) => Math.min(planTotalPages, p + 1))
+                }
+                disabled={planPage >= planTotalPages}
+                aria-label="Next purchase plan page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
