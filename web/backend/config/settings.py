@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "imports",
     "forecasting",
     "kitchen",
+    "ingredients",
 
 
 
