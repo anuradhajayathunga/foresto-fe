@@ -920,7 +920,10 @@ export default function KitchenPage() {
   const rowAlertPageEnd =
     rowIngredientAlerts.length === 0
       ? 0
-      : Math.min(rowAlertPage * rowAlertRowsPerPage, rowIngredientAlerts.length);
+      : Math.min(
+          rowAlertPage * rowAlertRowsPerPage,
+          rowIngredientAlerts.length,
+        );
   const selectedMenuItemName =
     items.find((item) => String(item.id) === prodMenuItem)?.name || "-";
 
@@ -2083,9 +2086,11 @@ export default function KitchenPage() {
                                   onCheckedChange={(checked) => {
                                     const next: Record<number, boolean> = {};
                                     const isChecked = Boolean(checked);
-                                    paginatedRowIngredientAlerts.forEach((alert) => {
-                                      next[alert.item_id] = isChecked;
-                                    });
+                                    paginatedRowIngredientAlerts.forEach(
+                                      (alert) => {
+                                        next[alert.item_id] = isChecked;
+                                      },
+                                    );
                                     setRowAlertLineSelected((prev) => ({
                                       ...prev,
                                       ...next,
