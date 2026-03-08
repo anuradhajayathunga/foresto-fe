@@ -40,16 +40,22 @@ export type DemandForecastResponse = {
 };
 
 export async function getDemandForecast(horizon_days = 7, top_n = 50) {
-  const res = await authFetch(`/api/forecasting/demand/?horizon_days=${horizon_days}&top_n=${top_n}`, {
-    method: "GET",
-  });
+  const res = await authFetch(
+    `/api/forecasting/demand/?horizon_days=${horizon_days}&top_n=${top_n}`,
+    {
+      method: "GET",
+    },
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
   return data as DemandForecastResponse;
 }
 
 export async function getForecastHistory(days = 14, top_n = 50) {
-  const res = await authFetch(`/api/forecasting/history/?days=${days}&top_n=${top_n}`, { method: "GET" });
+  const res = await authFetch(
+    `/api/forecasting/history/?days=${days}&top_n=${top_n}`,
+    { method: "GET" },
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
   return data as {
@@ -67,10 +73,14 @@ export async function getForecastHistory(days = 14, top_n = 50) {
   };
 }
 
-export async function getIngredientPlan(scope: "tomorrow" | "next7" = "next7", horizon_days = 7, top_n = 50) {
+export async function getIngredientPlan(
+  scope: "tomorrow" | "next7" = "next7",
+  horizon_days = 7,
+  top_n = 50,
+) {
   const res = await authFetch(
     `/api/forecasting/ingredients_plan/?scope=${scope}&horizon_days=${horizon_days}&top_n=${top_n}`,
-    { method: "GET" }
+    { method: "GET" },
   );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;

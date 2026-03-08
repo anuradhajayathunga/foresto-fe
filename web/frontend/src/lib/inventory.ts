@@ -1,4 +1,4 @@
-import { authFetch, unwrapList } from '@/lib/auth';
+import { authFetch, unwrapList } from "@/lib/auth";
 
 export type InventoryItem = {
   id: number;
@@ -16,7 +16,7 @@ export type StockMovement = {
   id: number;
   item: number;
   item_name?: string;
-  movement_type: 'IN' | 'OUT' | 'ADJUST';
+  movement_type: "IN" | "OUT" | "ADJUST";
   quantity: string;
   reason: string;
   note?: string;
@@ -26,7 +26,7 @@ export type StockMovement = {
 };
 
 export async function listInventoryItems() {
-  const res = await authFetch('/api/inventory/items/?ordering=name');
+  const res = await authFetch("/api/inventory/items/?ordering=name");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<InventoryItem>(data);
@@ -42,8 +42,8 @@ export async function createInventoryItem(payload: {
   cost_per_unit?: string;
   is_active?: boolean;
 }) {
-  const res = await authFetch('/api/inventory/items/', {
-    method: 'POST',
+  const res = await authFetch("/api/inventory/items/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -53,13 +53,13 @@ export async function createInventoryItem(payload: {
 
 export async function createStockMovement(payload: {
   item: number;
-  movement_type: 'IN' | 'OUT' | 'ADJUST';
+  movement_type: "IN" | "OUT" | "ADJUST";
   quantity: string;
   reason: string;
   note?: string;
 }) {
-  const res = await authFetch('/api/inventory/movements/', {
-    method: 'POST',
+  const res = await authFetch("/api/inventory/movements/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -68,7 +68,9 @@ export async function createStockMovement(payload: {
 }
 
 export async function listStockMovements(itemId?: number) {
-  const qs = itemId ? `?item=${itemId}&ordering=-created_at` : '?ordering=-created_at';
+  const qs = itemId
+    ? `?item=${itemId}&ordering=-created_at`
+    : "?ordering=-created_at";
   const res = await authFetch(`/api/inventory/movements/${qs}`);
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
@@ -76,7 +78,7 @@ export async function listStockMovements(itemId?: number) {
 }
 
 export async function getLowStockItems() {
-  const res = await authFetch('/api/inventory/items/low_stock/');
+  const res = await authFetch("/api/inventory/items/low_stock/");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<InventoryItem>(data);

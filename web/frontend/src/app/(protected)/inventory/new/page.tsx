@@ -290,7 +290,8 @@ export default function NewInventoryItemPage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-tight">
-                    Extra safety stock used by ingredient planning when suggesting purchases.
+                    Extra safety stock used by ingredient planning when
+                    suggesting purchases.
                   </p>
                 </div>
 
