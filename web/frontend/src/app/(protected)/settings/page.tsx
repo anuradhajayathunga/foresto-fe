@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { downloadImportTemplate, importCsv } from "@/lib/imports";
 
 import {
@@ -31,6 +31,7 @@ import {
   Terminal,
   Loader2,
   Play,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ import { UploadPhotoForm } from "./_components/upload-photo";
 export default function SettingsPage() {
   const [kind, setKind] = useState<Kind>("categories");
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dryRun, setDryRun] = useState(false);
 
   const [result, setResult] = useState<any>(null);
@@ -78,6 +80,13 @@ export default function SettingsPage() {
       setErr(e?.detail || e?.message || "Template download failed");
     } finally {
       setDownloadingTemplate(false);
+    }
+  }
+
+  function clearSelectedFile() {
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   }
 
@@ -166,6 +175,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <Input
+                    ref={fileInputRef}
                     type="file"
                     accept=".csv"
                     onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -178,23 +188,35 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-3">
                       <FileSpreadsheet className="h-5 w-5 text-green-600" />
                       <span className="text-sm font-medium">{file.name}</span>
-                      <Badge variant="secondary" className="text-[10px] h-5">
+                      <div className="text-[10px] rounded-md text-green-700 ">
                         {(file.size / 1024).toFixed(1)} KB
-                      </Badge>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={run}
-                      disabled={loading}
-                      className="gap-2"
-                    >
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4 fill-current" />
-                      )}
-                      {loading ? "Processing..." : "Start Import"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={clearSelectedFile}
+                        disabled={loading}
+                        className="gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        Clear
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={run}
+                        disabled={loading}
+                        className="gap-2"
+                      >
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4 fill-current" />
+                        )}
+                        {loading ? "Processing..." : "Start Import"}
+                      </Button>
+                    </div>
                   </div>
                 )}
 

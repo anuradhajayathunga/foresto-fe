@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime, timedelta
 from io import TextIOWrapper
 from decimal import Decimal
 from django.db import transaction
@@ -367,6 +368,17 @@ class ImportCSVView(APIView):
             s = (v or "").strip()
             if not s:
                 return timezone.now()
+
+            # Excel serial date support (e.g. 45432 or 45432.5)
+            try:
+                serial = float(s)
+                if serial > 0:
+                    base = datetime(1899, 12, 30)
+                    dt_from_serial = base + timedelta(days=serial)
+                    return timezone.make_aware(dt_from_serial)
+            except ValueError:
+                pass
+
             dt = parse_datetime(s)
             if dt:
                 return dt if timezone.is_aware(dt) else timezone.make_aware(dt)
@@ -374,7 +386,29 @@ class ImportCSVView(APIView):
             if d:
                 dt2 = timezone.datetime(d.year, d.month, d.day, 0, 0, 0)
                 return timezone.make_aware(dt2)
-            raise ValueError("Invalid sold_at (use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+
+            # Common CSV date formats from spreadsheets/exports.
+            date_formats = [
+                "%d/%m/%Y",
+                "%d/%m/%Y %H:%M",
+                "%d/%m/%Y %H:%M:%S",
+                "%Y/%m/%d",
+                "%Y/%m/%d %H:%M",
+                "%Y/%m/%d %H:%M:%S",
+                "%d-%m-%Y",
+                "%d-%m-%Y %H:%M",
+                "%d-%m-%Y %H:%M:%S",
+            ]
+            for fmt in date_formats:
+                try:
+                    parsed = datetime.strptime(s, fmt)
+                    return timezone.make_aware(parsed)
+                except ValueError:
+                    continue
+
+            raise ValueError(
+                "Invalid sold_at. Supported examples: 2026-03-08, 2026-03-08 14:30:00, 08/03/2026, 08/03/2026 14:30"
+            )
 
         # ✅ Always false for imports (so NO recipe deduction triggers)
         APPLY_INGREDIENTS = False
@@ -420,11 +454,21 @@ class ImportCSVView(APIView):
                     elif cat_slug and mi_slug:
                         category = Category.objects.get(restaurant=restaurant, slug=cat_slug)
                         menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, slug=mi_slug)
+                    elif mi_slug:
+                        # Allow slug-only matching when category is not provided.
+                        slug_qs = MenuItem.objects.filter(restaurant=restaurant, slug=mi_slug)
+                        if slug_qs.count() > 1:
+                            raise ValueError(
+                                f"Row {row_idx}: menu_item_slug '{mi_slug}' matches multiple items. Add category_slug to disambiguate."
+                            )
+                        menu_item = slug_qs.first()
+                        if not menu_item:
+                            raise MenuItem.DoesNotExist()
                     elif item_name:
                         name = item_name
                     else:
                         raise ValueError(
-                            f"Row {row_idx}: provide menu_item_id OR (category_slug + menu_item_slug) OR item_name"
+                            f"Row {row_idx}: provide menu_item_slug (optionally with category_slug) OR item_name (menu_item_id is optional)"
                         )
 
                     unit_price = to_decimal(row.get("unit_price"), default=str(menu_item.price if menu_item else "0.00"))
@@ -553,7 +597,6 @@ class DownloadCSVTemplateView(APIView):
                         "notes",
                         "category_slug",
                         "menu_item_slug",
-                        "menu_item_id",
                         "item_name",
                         "qty",
                         "unit_price",
