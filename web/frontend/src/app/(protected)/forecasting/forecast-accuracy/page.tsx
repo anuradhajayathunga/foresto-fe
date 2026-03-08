@@ -35,6 +35,7 @@ import {
   type KitchenProduction,
   type KitchenWaste,
 } from "@/lib/kitchen";
+import { getBufferPreview, type BufferPreviewResponse } from "@/lib/inventory";
 import { listSales, type Sale } from "@/lib/sales";
 import { listAllRecipeLines, type RecipeLine } from "@/lib/recipes";
 import { Badge } from "@/components/ui/badge";
@@ -223,6 +224,12 @@ function parseError(error: unknown): string {
     return String((error as { detail: unknown }).detail);
   }
   return "Failed to load forecast accuracy data.";
+}
+
+function parsePreviewInput(value: string, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return parsed;
 }
 
 function toSaleDate(sale: Sale): string | null {
@@ -528,6 +535,15 @@ export default function ForecastAccuracyPage() {
   const [loading, setLoading] = useState(true);
   const [chartsReady, setChartsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bufferPreview, setBufferPreview] =
+    useState<BufferPreviewResponse | null>(null);
+  const [bufferPreviewLoading, setBufferPreviewLoading] = useState(false);
+  const [bufferPreviewError, setBufferPreviewError] = useState<string | null>(
+    null,
+  );
+  const [lookbackDaysInput, setLookbackDaysInput] = useState("14");
+  const [bufferDaysInput, setBufferDaysInput] = useState("3");
+  const [alphaInput, setAlphaInput] = useState("0.6");
   const [dashboard, setDashboard] = useState<ForecastAccuracyData>({
     rows: [],
     ingredientWasteBreakdown: [],
@@ -575,9 +591,34 @@ export default function ForecastAccuracyPage() {
     }
   }
 
+  async function loadBufferPreview() {
+    const lookbackDays = Math.max(1, parsePreviewInput(lookbackDaysInput, 14));
+    const bufferDays = Math.max(1, parsePreviewInput(bufferDaysInput, 3));
+    const alpha = parsePreviewInput(alphaInput, 0.6);
+
+    setBufferPreviewLoading(true);
+    setBufferPreviewError(null);
+    try {
+      const data = await getBufferPreview({
+        lookback_days: lookbackDays,
+        buffer_days: bufferDays,
+        alpha,
+      });
+      setBufferPreview(data);
+    } catch (e) {
+      setBufferPreviewError(parseError(e));
+    } finally {
+      setBufferPreviewLoading(false);
+    }
+  }
+
   useEffect(() => {
     void loadData();
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    void loadBufferPreview();
+  }, []);
 
   useEffect(() => {
     setChartsReady(true);
@@ -603,6 +644,18 @@ export default function ForecastAccuracyPage() {
     () => dashboard.charts.accuracyTrend.slice(-30),
     [dashboard.charts.accuracyTrend],
   );
+
+  const bufferPreviewRows = useMemo(() => {
+    return [...(bufferPreview?.items ?? [])].sort((a, b) => {
+      const deltaA = Math.abs(
+        Number(a.new_buffer_size) - Number(a.old_buffer_size),
+      );
+      const deltaB = Math.abs(
+        Number(b.new_buffer_size) - Number(b.old_buffer_size),
+      );
+      return deltaB - deltaA;
+    });
+  }, [bufferPreview]);
 
   return (
     <div className="min-h-screen p-6 md:p-8 space-y-8 font-sans">
@@ -1169,6 +1222,166 @@ export default function ForecastAccuracyPage() {
                     </TableCell>
                   </TableRow>
                 ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      <Card className="shadow-sm border-slate-200/60 overflow-hidden">
+        <div className="border-b border-slate-200  p-5 lg:p-6 space-y-4">
+          <div>
+            <CardTitle className="text-lg font-semibold ">
+              Buffer Preview
+            </CardTitle>
+            <CardDescription className="text-sm mt-1">
+              Preview automatic `buffer_size` updates from waste patterns before
+              applying changes.
+            </CardDescription>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="buffer-lookback">Lookback Days</Label>
+              <Input
+                id="buffer-lookback"
+                type="number"
+                min={1}
+                max={90}
+                value={lookbackDaysInput}
+                onChange={(e) => setLookbackDaysInput(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="buffer-days">Buffer Days</Label>
+              <Input
+                id="buffer-days"
+                type="number"
+                min={1}
+                max={30}
+                value={bufferDaysInput}
+                onChange={(e) => setBufferDaysInput(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="buffer-alpha">Alpha</Label>
+              <Input
+                id="buffer-alpha"
+                type="number"
+                min={0}
+                max={1}
+                step={0.1}
+                value={alphaInput}
+                onChange={(e) => setAlphaInput(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Updated Items</Label>
+              <div className="h-10 px-3 rounded-md border border-slate-200 bg-slate-50 flex items-center text-sm font-medium tabular-nums">
+                {bufferPreview?.updated ?? 0}
+              </div>
+            </div>
+            <Button
+              className="h-10"
+              onClick={() => void loadBufferPreview()}
+              disabled={bufferPreviewLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${bufferPreviewLoading ? "animate-spin" : ""}`}
+              />
+              Refresh Preview
+            </Button>
+          </div>
+
+          {bufferPreview && (
+            <div className="text-xs text-slate-500">
+              Period: {bufferPreview.start_date} to {bufferPreview.end_date} |
+              alpha: {bufferPreview.alpha}
+            </div>
+          )}
+
+          {bufferPreviewError && (
+            <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {bufferPreviewError}
+            </div>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-slate-200 hover:bg-transparent">
+                <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                  Ingredient
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                  Old Buffer
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                  Target Buffer
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                  New Buffer
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                  Avg Daily Waste
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bufferPreviewLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-300" />
+                  </TableCell>
+                </TableRow>
+              ) : bufferPreviewRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-sm">
+                    No buffer preview data available.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                bufferPreviewRows.map((row) => {
+                  const delta =
+                    Number(row.new_buffer_size) - Number(row.old_buffer_size);
+                  const deltaBadgeClass =
+                    delta > 0
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : delta < 0
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+                  return (
+                    <TableRow
+                      key={row.ingredient_id}
+                      className="border-b border-slate-100"
+                    >
+                      <TableCell>
+                        <div className="font-medium text-sm">
+                          {row.ingredient_name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 uppercase">
+                          ID:{row.ingredient_id}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-slate-600">
+                        {row.old_buffer_size}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-slate-600">
+                        {row.target_buffer_size}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm">
+                        <Badge variant="outline" className={deltaBadgeClass}>
+                          {row.new_buffer_size}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sm text-slate-600">
+                        {row.avg_daily_waste_equiv}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
