@@ -257,8 +257,8 @@ class ImportCSVView(APIView):
     def import_recipes(self, reader, restaurant):
         """
         columns:
-          menu_item_name (required)
-          menu_category_slug OR menu_category_name (optional but recommended)
+          menu_item_slug (required)
+          menu_category_slug (required)
           ingredient_sku (required)
           qty (required)  # per 1 menu item
         """
@@ -268,32 +268,36 @@ class ImportCSVView(APIView):
 
         for idx, row in enumerate(reader, start=2):
             try:
-                menu_name = (row.get("menu_item_name") or "").strip()
-                if not menu_name:
-                    raise ValueError("menu_item_name is required")
+                data = self._normalized_row(row)
 
-                cat_slug = (row.get("menu_category_slug") or "").strip()
-                cat_name = (row.get("menu_category_name") or "").strip()
+                menu_item_slug = (data.get("menu_item_slug") or "").strip()
+                menu_category_slug = (data.get("menu_category_slug") or "").strip()
+                ingredient_sku = (data.get("ingredient_sku") or "").strip()
 
-                ingredient_sku = (row.get("ingredient_sku") or "").strip()
+                if not menu_item_slug:
+                    raise ValueError("menu_item_slug is required")
+                if not menu_category_slug:
+                    raise ValueError("menu_category_slug is required")
                 if not ingredient_sku:
                     raise ValueError("ingredient_sku is required")
 
-                qty = to_decimal(row.get("qty"))
+                qty = to_decimal(data.get("qty"))
                 if qty <= 0:
                     raise ValueError("qty must be > 0")
 
-                ingredient = InventoryItem.objects.get(restaurant=restaurant, sku=ingredient_sku)
-
-                # Find menu item (category filter helps if same names exist)
-                if cat_slug:
-                    category = Category.objects.get(restaurant=restaurant, slug=cat_slug)
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, name=menu_name)
-                elif cat_name:
-                    category = Category.objects.get(restaurant=restaurant, name=cat_name)
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, name=menu_name)
-                else:
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, name=menu_name)
+                category = Category.objects.get(
+                    restaurant=restaurant,
+                    slug__iexact=menu_category_slug,
+                )
+                menu_item = MenuItem.objects.get(
+                    restaurant=restaurant,
+                    category=category,
+                    slug__iexact=menu_item_slug,
+                )
+                ingredient = InventoryItem.objects.get(
+                    restaurant=restaurant,
+                    sku__iexact=ingredient_sku,
+                )
 
                 obj, was_created = RecipeLine.objects.update_or_create(
                     menu_item=menu_item,
@@ -307,6 +311,18 @@ class ImportCSVView(APIView):
                 errors.append({"row": idx, "error": str(e), "data": row})
 
         return {"created": created, "updated": updated, "errors": errors}
+
+    def _normalized_row(self, row):
+        normalized = {}
+        for key, value in row.items():
+            if key is None:
+                continue
+            clean_key = str(key).strip().lower()
+            if isinstance(value, str):
+                normalized[clean_key] = value.strip()
+            else:
+                normalized[clean_key] = value
+        return normalized
 
     def import_sales(self, reader, request, restaurant):
         """
@@ -524,7 +540,7 @@ class DownloadCSVTemplateView(APIView):
                 "cost_per_unit", "current_stock", "is_active"
             ],
             "recipes": [
-                "menu_item_name", "menu_category_name", "ingredient_sku", "qty"
+                "menu_item_slug", "menu_category_slug", "ingredient_sku", "qty"
             ],
             "sales": [
                         "sale_ref",
@@ -565,6 +581,6 @@ class DownloadCSVTemplateView(APIView):
         elif kind == "ingredients":
             writer.writerow(["FLOUR-001", "Wheat Flour", "kg", "10", "1.50", "100", "true"])
         elif kind == "recipes":
-            writer.writerow(["Chicken Soup", "Starters", "FLOUR-001", "0.2"])
+            writer.writerow(["chicken-soup", "starters", "FLOUR-001", "0.2"])
 
         return response

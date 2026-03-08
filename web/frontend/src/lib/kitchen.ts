@@ -71,6 +71,7 @@ export type KitchenPurchaseRequest = {
   source_plan_date?: string | null;
   status:
     | "DRAFT"
+    | "REQUEST"
     | "SUBMITTED"
     | "APPROVED"
     | "CONVERTED"
@@ -192,6 +193,7 @@ export async function checkPlanAlerts(payload: {
   rows: KitchenPlanRow[];
   create_purchase_request?: boolean;
   note?: string;
+  selected_item_ids?: number[];
   auto_create_purchase_draft?: boolean;
   supplier?: number;
   purchase_invoice_date?: string;

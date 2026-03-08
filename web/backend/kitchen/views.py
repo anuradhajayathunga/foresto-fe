@@ -194,6 +194,8 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
 
         created_request = None
         purchase_invoice = None
+        selected_item_ids = s.validated_data.get("selected_item_ids")
+
         if s.validated_data.get("create_purchase_request") and alert_data["ingredient_alerts"]:
             created_request = self._create_purchase_request_from_alerts(
                 request=request,
@@ -201,6 +203,7 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
                 source_plan_date=s.validated_data.get("date"),
                 note=s.validated_data.get("note", ""),
                 alert_data=alert_data,
+                selected_item_ids=selected_item_ids,
             )
 
         if s.validated_data.get("auto_create_purchase_draft") and alert_data["ingredient_alerts"]:
@@ -211,7 +214,10 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
                     source_plan_date=s.validated_data.get("date"),
                     note=s.validated_data.get("note", ""),
                     alert_data=alert_data,
+                    selected_item_ids=selected_item_ids,
                 )
+            if not created_request:
+                return Response({"detail": "No selected alert items with valid quantities."}, status=400)
             purchase_invoice = self._create_purchase_invoice_draft_from_request(
                 request=request,
                 purchase_request=created_request,
@@ -332,7 +338,16 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
             status=status.HTTP_200_OK,
         )
 
-    def _create_purchase_request_from_alerts(self, request, restaurant, source_plan_date, note, alert_data):
+    def _create_purchase_request_from_alerts(self, request, restaurant, source_plan_date, note, alert_data, selected_item_ids=None):
+        selected_set = set(int(x) for x in (selected_item_ids or []))
+        filtered_alerts = [
+            a for a in alert_data.get("ingredient_alerts", [])
+            if (not selected_set or int(a.get("item_id")) in selected_set)
+            and Decimal(str(a.get("suggested_purchase_qty") or 0)) > 0
+        ]
+        if not filtered_alerts:
+            return None
+
         with transaction.atomic():
             pr = KitchenPurchaseRequest.objects.create(
                 restaurant=restaurant,
@@ -346,11 +361,11 @@ class MenuItemProductionViewSet(KitchenBaseFiltersMixin, RestaurantScopedQueryse
             items_map = {
                 i.id: i for i in InventoryItem.objects.filter(
                     restaurant=restaurant,
-                    id__in=[a["item_id"] for a in alert_data["ingredient_alerts"]],
+                    id__in=[a["item_id"] for a in filtered_alerts],
                 )
             }
 
-            for a in alert_data["ingredient_alerts"]:
+            for a in filtered_alerts:
                 item = items_map.get(a["item_id"])
                 if not item:
                     continue

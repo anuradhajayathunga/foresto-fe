@@ -1,5 +1,14 @@
 import { authFetch } from "@/lib/auth";
 
+function extractErrorDetail(data: any, fallback: string) {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data?.detail === "string") return data.detail;
+  if (Array.isArray(data?.detail)) return data.detail.join(", ");
+  if (typeof data?.error === "string") return data.error;
+  return fallback;
+}
+
 // export async function importCsv(kind: "categories" | "menu_items" | "ingredients" | "recipes", file: File, dryRun = false) {
 //   const fd = new FormData();
 //   fd.append("kind", kind);
@@ -27,7 +36,13 @@ export async function importCsv(kind: string, file: File, dryRun = false) {
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw data;
+  if (!res.ok) {
+    throw {
+      detail: extractErrorDetail(data, `Import failed (HTTP ${res.status})`),
+      status: res.status,
+      raw: data,
+    };
+  }
   return data;
 }
 
@@ -41,7 +56,14 @@ export async function downloadImportTemplate(kind: string) {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw data;
+    throw {
+      detail: extractErrorDetail(
+        data,
+        `Template download failed (HTTP ${res.status})`,
+      ),
+      status: res.status,
+      raw: data,
+    };
   }
 
   const blob = await res.blob();

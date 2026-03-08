@@ -187,13 +187,13 @@ export default function PurchasesPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    const filteredRows = rows.filter(
       (p) =>
         String(p.id).includes(q) ||
         (p.invoice_no || "").toLowerCase().includes(q) ||
         (p.supplier_name || "").toLowerCase().includes(q),
     );
+    return filteredRows.sort((a, b) => b.id - a.id);
   }, [rows, search]);
 
   // --- Metrics Calculation ---

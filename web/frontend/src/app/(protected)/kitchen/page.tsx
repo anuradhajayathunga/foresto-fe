@@ -117,6 +117,10 @@ function fmtQty(v: string | number | null | undefined) {
   return n.toFixed(2);
 }
 
+function displayRequestStatus(status: string) {
+  return status === "SUBMITTED" ? "REQUEST" : status;
+}
+
 function generatePurchaseReferenceNo() {
   const dateStr = todayISO().replace(/-/g, "");
   const random = Math.floor(1000 + Math.random() * 9000);
@@ -548,6 +552,21 @@ export default function KitchenPage() {
 
   async function handleCreatePurchaseRequestFromAlertSheet() {
     if (!selectedAlertRow) return;
+    const selectedItemIds = (rowPlanAlerts?.ingredient_alerts || [])
+      .filter(
+        (alert) =>
+          Boolean(rowAlertLineSelected[alert.item_id]) &&
+          Number(
+            rowAlertBuyQty[alert.item_id] ?? alert.suggested_purchase_qty ?? 0,
+          ) > 0,
+      )
+      .map((alert) => alert.item_id);
+
+    if (!selectedItemIds.length) {
+      setErr("Select at least one item with Buy Qty > 0.");
+      return;
+    }
+
     setSaving(true);
     setErr(null);
     setSuccess(null);
@@ -562,6 +581,7 @@ export default function KitchenPage() {
         ],
         create_purchase_request: true,
         note: alertNote,
+        selected_item_ids: selectedItemIds,
       });
 
       setRowPlanAlerts(resp.alerts || null);
@@ -577,6 +597,9 @@ export default function KitchenPage() {
           `Purchase request #${requestId} created (${lineCount} line${lineCount === 1 ? "" : "s"}).`,
         );
         await loadKitchenData();
+        setProductionAlertSheetOpen(false);
+        setSelectedAlertRow(null);
+        setRowPlanAlerts(null);
       } else {
         setSuccess(
           "No low-stock alerts found. Purchase request was not created.",
@@ -637,6 +660,8 @@ export default function KitchenPage() {
       );
       await loadKitchenData();
       setProductionAlertSheetOpen(false);
+      setSelectedAlertRow(null);
+      setRowPlanAlerts(null);
       router.push(`/purchases/${invoice.id}`);
     } catch (e: any) {
       setErr(parseError(e));
@@ -706,9 +731,7 @@ export default function KitchenPage() {
       setPlanAlerts(resp.alerts);
       const invoiceId = resp.purchase_invoice?.id;
       if (invoiceId) {
-        setSuccess(
-          ` ${alertNote}`,
-        );
+        setSuccess(` ${alertNote}`);
         await loadKitchenData();
         router.push(`/purchases/${invoiceId}`);
       } else {
@@ -870,6 +893,14 @@ export default function KitchenPage() {
 
   // --- UI Components ---
   const ingredientAlerts = planAlerts?.ingredient_alerts || [];
+  const rowIngredientAlerts = rowPlanAlerts?.ingredient_alerts || [];
+  const rowSelectedCount = rowIngredientAlerts.filter((alert) =>
+    Boolean(rowAlertLineSelected[alert.item_id]),
+  ).length;
+  const allRowSelected =
+    rowIngredientAlerts.length > 0 &&
+    rowSelectedCount === rowIngredientAlerts.length;
+  const someRowSelected = rowSelectedCount > 0 && !allRowSelected;
   const selectedMenuItemName =
     items.find((item) => String(item.id) === prodMenuItem)?.name || "-";
 
@@ -1548,15 +1579,6 @@ export default function KitchenPage() {
               </Card>
             </div>
 
-            {productionAlertSheetOpen && (
-              <button
-                type="button"
-                aria-label="Close production alert sheet"
-                className="fixed inset-0 z-[55]"
-                onClick={() => setProductionAlertSheetOpen(false)}
-              />
-            )}
-
             {/* <Card
               className={`fixed top-0 z-[60] h-screen w-full max-w-xl overflow-y-auto rounded-none shadow-xl border-muted/60 transition-transform duration-300 ${
                 productionAlertSheetSide === "right"
@@ -1750,6 +1772,7 @@ export default function KitchenPage() {
                               <TableRow key={alert.item_id}>
                                 <TableCell className="text-center">
                                   <Checkbox
+                                      className="border-slate-400 bg-white data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600 dark:border-slate-500 dark:bg-slate-900"
                                     checked={Boolean(
                                       rowAlertLineSelected[alert.item_id],
                                     )}
@@ -1855,7 +1878,16 @@ export default function KitchenPage() {
             {/* ---  Side-Sheet with Pop-up Dialog --- */}
             <Dialog
               open={productionAlertSheetOpen}
-              onOpenChange={setProductionAlertSheetOpen}
+              onOpenChange={(open) => {
+                setProductionAlertSheetOpen(open);
+                if (!open) {
+                  setSelectedAlertRow(null);
+                  setRowPlanAlerts(null);
+                  setRowAlertBuyQty({});
+                  setRowAlertLineSelected({});
+                  setRowAlertLoadingId(null);
+                }
+              }}
             >
               <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -1981,6 +2013,28 @@ export default function KitchenPage() {
                                 {selectedRows.length} item
                                 {selectedRows.length === 1 ? "" : "s"} selected.
                               </p>
+                              {/* <div className="space-y-1 text-foreground">
+                                {selectedRows.map((row) => (
+                                  <div
+                                    key={row.item_id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded border bg-background/80 px-2 py-1"
+                                  >
+                                    <span className="font-medium">
+                                      {row.item_name}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      Need {fmtQty(row.required_qty)}{" "}
+                                      {row.unit || ""} | Stock{" "}
+                                      {fmtQty(row.current_stock)} | Buy{" "}
+                                      {fmtQty(
+                                        rowAlertBuyQty[row.item_id] ??
+                                          row.suggested_purchase_qty,
+                                      )}{" "}
+                                      {row.unit || ""}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div> */}
                             </div>
                           );
                         })()}
@@ -1992,7 +2046,26 @@ export default function KitchenPage() {
                           <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                             <TableRow>
                               <TableHead className="h-8 text-xs text-center w-[50px]">
-                                Select
+                                <Checkbox
+                                  aria-label="Select all ingredients"
+                                  className="border-slate-400 bg-white data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600 dark:border-slate-500 dark:bg-slate-900"
+                                  checked={
+                                    allRowSelected
+                                      ? true
+                                      : someRowSelected
+                                        ? "indeterminate"
+                                        : false
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    const next: Record<number, boolean> = {};
+                                    const isChecked = Boolean(checked);
+                                    rowIngredientAlerts.forEach((alert) => {
+                                      next[alert.item_id] = isChecked;
+                                    });
+                                    setRowAlertLineSelected(next);
+                                  }}
+                                  disabled={rowIngredientAlerts.length === 0}
+                                />
                               </TableHead>
                               <TableHead className="h-8 text-xs">
                                 Ingredient
@@ -2012,72 +2085,70 @@ export default function KitchenPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {(rowPlanAlerts?.ingredient_alerts || []).map(
-                              (alert) => (
-                                <TableRow key={alert.item_id}>
-                                  <TableCell className="text-center">
-                                    <Checkbox
-                                      checked={Boolean(
-                                        rowAlertLineSelected[alert.item_id],
-                                      )}
-                                      onCheckedChange={(checked) =>
-                                        setRowAlertLineSelected((prev) => ({
-                                          ...prev,
-                                          [alert.item_id]: Boolean(checked),
-                                        }))
-                                      }
-                                    />
-                                  </TableCell>
-                                  <TableCell className="text-xs">
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-medium">
-                                        {alert.item_name}
-                                      </span>
-                                      <Badge
-                                        variant="outline"
-                                        className={`w-fit text-[10px] ${
-                                          alert.severity === "CRITICAL"
-                                            ? "border-red-300 text-red-700 bg-red-50"
-                                            : "border-yellow-300 text-yellow-700 bg-yellow-50"
-                                        }`}
-                                      >
-                                        {alert.severity}
-                                      </Badge>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-xs text-right">
-                                    {fmtQty(alert.required_qty)}{" "}
-                                    {alert.unit || ""}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-right">
-                                    {fmtQty(alert.current_stock)}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-right">
-                                    {fmtQty(alert.suggested_purchase_qty)}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-right w-[120px]">
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="0.5"
-                                      className="h-8 text-right font-medium text-emerald-700"
-                                      value={
-                                        rowAlertBuyQty[alert.item_id] ??
-                                        String(
-                                          alert.suggested_purchase_qty || "0",
-                                        )
-                                      }
-                                      onChange={(e) =>
-                                        setRowAlertBuyQty((prev) => ({
-                                          ...prev,
-                                          [alert.item_id]: e.target.value,
-                                        }))
-                                      }
-                                    />
-                                  </TableCell>
-                                </TableRow>
-                              ),
-                            )}
+                            {rowIngredientAlerts.map((alert) => (
+                              <TableRow key={alert.item_id}>
+                                <TableCell className="text-center">
+                                  <Checkbox
+                                    checked={Boolean(
+                                      rowAlertLineSelected[alert.item_id],
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      setRowAlertLineSelected((prev) => ({
+                                        ...prev,
+                                        [alert.item_id]: Boolean(checked),
+                                      }))
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-medium">
+                                      {alert.item_name}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`w-fit text-[10px] ${
+                                        alert.severity === "CRITICAL"
+                                          ? "border-red-300 text-red-700 bg-red-50"
+                                          : "border-yellow-300 text-yellow-700 bg-yellow-50"
+                                      }`}
+                                    >
+                                      {alert.severity}
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs text-right">
+                                  {fmtQty(alert.required_qty)}{" "}
+                                  {alert.unit || ""}
+                                </TableCell>
+                                <TableCell className="text-xs text-right">
+                                  {fmtQty(alert.current_stock)}
+                                </TableCell>
+                                <TableCell className="text-xs text-right">
+                                  {fmtQty(alert.suggested_purchase_qty)}
+                                </TableCell>
+                                <TableCell className="text-xs text-right w-[120px]">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    className="h-8 text-right font-medium text-emerald-700"
+                                    value={
+                                      rowAlertBuyQty[alert.item_id] ??
+                                      String(
+                                        alert.suggested_purchase_qty || "0",
+                                      )
+                                    }
+                                    onChange={(e) =>
+                                      setRowAlertBuyQty((prev) => ({
+                                        ...prev,
+                                        [alert.item_id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       </div>
@@ -2217,11 +2288,11 @@ export default function KitchenPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
-                {selectedWasteId && (
+                {/* {selectedWasteId && (
                   <div className="text-xs rounded border border-orange-200 bg-orange-50 text-orange-800 px-3 py-2">
                     Editing Row #{selectedWasteId}
                   </div>
-                )}
+                )} */}
                 <div className="grid gap-1.5">
                   <Label className="text-xs uppercase text-muted-foreground">
                     Date
@@ -2488,18 +2559,26 @@ export default function KitchenPage() {
                         {req.source_plan_date || "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            req.status === "DRAFT"
-                              ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                              : req.status === "CONVERTED"
-                                ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                : "bg-gray-100 text-gray-800"
-                          }
-                        >
-                          {req.status}
-                        </Badge>
+                        {/** Align submitted kitchen requests with purchase workflow wording. */}
+                        {(() => {
+                          const shownStatus = displayRequestStatus(req.status);
+                          return (
+                            <Badge
+                              variant="secondary"
+                              className={
+                                shownStatus === "DRAFT"
+                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                  : shownStatus === "REQUEST"
+                                    ? "bg-amber-50 text-amber-700 hover:bg-amber-50"
+                                    : shownStatus === "CONVERTED"
+                                      ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                      : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {shownStatus}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         {req.lines?.length || 0}
@@ -2537,7 +2616,7 @@ export default function KitchenPage() {
                                 onClick={() => openConvertDialog(req.id)}
                                 disabled={saving}
                               >
-                                Convert <ArrowRight className="ml-1 w-3 h-3" />
+                                Draft
                               </Button>
                             </>
                           )}

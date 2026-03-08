@@ -63,7 +63,7 @@ export default function SettingsPage() {
       const res = await importCsv(kind, file, dryRun);
       setResult(res);
     } catch (e: any) {
-      setErr(e?.detail || "Import failed");
+      setErr(e?.detail || e?.message || "Import failed");
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export default function SettingsPage() {
     try {
       await downloadImportTemplate(kind);
     } catch (e: any) {
-      setErr(e?.detail || "Template download failed");
+      setErr(e?.detail || e?.message || "Template download failed");
     } finally {
       setDownloadingTemplate(false);
     }

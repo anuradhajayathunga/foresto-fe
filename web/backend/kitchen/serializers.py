@@ -166,6 +166,11 @@ class PlanAlertCheckSerializer(serializers.Serializer):
     supplier = serializers.IntegerField(required=False)
     purchase_invoice_date = serializers.DateField(required=False)
     purchase_invoice_no = serializers.CharField(required=False, allow_blank=True)
+    selected_item_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        allow_empty=True,
+    )
 
     def validate(self, attrs):
         if attrs.get("auto_create_purchase_draft") and not attrs.get("supplier"):
