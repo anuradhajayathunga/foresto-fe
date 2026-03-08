@@ -1,7 +1,12 @@
-import { authFetch, unwrapList } from '@/lib/auth';
+import { authFetch, unwrapList } from "@/lib/auth";
 
 export type MenuItemMini = { id: number; name: string; price?: string };
-export type InventoryItemMini = { id: number; name: string; sku: string; unit: string };
+export type InventoryItemMini = {
+  id: number;
+  name: string;
+  sku: string;
+  unit: string;
+};
 
 export type RecipeLine = {
   id: number;
@@ -14,14 +19,14 @@ export type RecipeLine = {
 };
 
 export async function listMenuItemsMini() {
-  const res = await authFetch('/api/menu/items/?ordering=name');
+  const res = await authFetch("/api/menu/items/?ordering=name");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<MenuItemMini>(data);
 }
 
 export async function listInventoryItemsMini() {
-  const res = await authFetch('/api/inventory/items/?ordering=name');
+  const res = await authFetch("/api/inventory/items/?ordering=name");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
 
@@ -34,15 +39,28 @@ export async function listInventoryItemsMini() {
 }
 
 export async function listRecipeLines(menuItemId: number) {
-  const res = await authFetch(`/api/menu/recipe-lines/?menu_item=${menuItemId}&ordering=id`);
+  const res = await authFetch(
+    `/api/menu/recipe-lines/?menu_item=${menuItemId}&ordering=id`,
+  );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
   return unwrapList<RecipeLine>(data);
 }
 
-export async function createRecipeLine(payload: { menu_item: number; ingredient: number; qty: string }) {
-  const res = await authFetch('/api/menu/recipe-lines/', {
-    method: 'POST',
+export async function listAllRecipeLines() {
+  const res = await authFetch("/api/menu/recipe-lines/?ordering=id");
+  const data = await res.json().catch(() => []);
+  if (!res.ok) throw data;
+  return unwrapList<RecipeLine>(data);
+}
+
+export async function createRecipeLine(payload: {
+  menu_item: number;
+  ingredient: number;
+  qty: string;
+}) {
+  const res = await authFetch("/api/menu/recipe-lines/", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -50,9 +68,12 @@ export async function createRecipeLine(payload: { menu_item: number; ingredient:
   return data as RecipeLine;
 }
 
-export async function updateRecipeLine(id: number, payload: { qty?: string; ingredient?: number }) {
+export async function updateRecipeLine(
+  id: number,
+  payload: { qty?: string; ingredient?: number },
+) {
   const res = await authFetch(`/api/menu/recipe-lines/${id}/`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
@@ -61,7 +82,9 @@ export async function updateRecipeLine(id: number, payload: { qty?: string; ingr
 }
 
 export async function deleteRecipeLine(id: number) {
-  const res = await authFetch(`/api/menu/recipe-lines/${id}/`, { method: 'DELETE' });
+  const res = await authFetch(`/api/menu/recipe-lines/${id}/`, {
+    method: "DELETE",
+  });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw data;

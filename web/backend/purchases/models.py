@@ -25,7 +25,9 @@ class Supplier(models.Model):
 
 class PurchaseInvoice(models.Model):
     class Status(models.TextChoices):
-        DRAFT = "DRAFT", "Draft"        
+        DRAFT = "DRAFT", "Draft"
+        REQUEST = "REQUEST", "Request"
+        CONFIRMED = "CONFIRMED", "Confirmed"
         POSTED = "POSTED", "Posted"
         VOID = "VOID", "Void"
 
@@ -40,7 +42,7 @@ class PurchaseInvoice(models.Model):
     invoice_no = models.CharField(max_length=80, blank=True)  # optional supplier invoice number
     invoice_date = models.DateField()
 
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.POSTED)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUEST)
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))

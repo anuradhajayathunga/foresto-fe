@@ -1,9 +1,11 @@
 import csv
+import logging
 from datetime import date
 from decimal import Decimal
 
 from django.db import transaction
 from django.http import HttpResponse
+from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import mixins, status, viewsets
@@ -12,17 +14,33 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from core.mixins import RestaurantScopedQuerysetMixin
+from core.tenant_utils import resolve_target_restaurant_for_request
 from forecasting.services_ingredients import build_ingredient_plan
 from inventory.models import InventoryItem, StockMovement
 from inventory.permissions import IsStaff
 from .models import PurchaseInvoice, PurchaseLine, Supplier
 from .serializers import (
     PurchaseDraftFromForecastSerializer,
+    PurchaseEmailSendSerializer,
     PurchaseInvoiceCreateSerializer,
     PurchaseInvoiceOutSerializer,
+    PurchaseWhatsAppSendSerializer,
     PurchaseVoidSerializer,
     SupplierSerializer,
 )
+from .services_email import (
+    build_purchase_email_body,
+    build_purchase_email_html,
+    build_purchase_email_subject,
+    send_purchase_order_email,
+)
+from .services_whatsapp import (
+    build_purchase_whatsapp_message,
+    normalize_whatsapp_phone,
+    send_whatsapp_text_message,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class SupplierViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -56,8 +74,39 @@ class PurchaseInvoiceViewSet(
         s = PurchaseInvoiceCreateSerializer(data=request.data, context={"request": request})
         s.is_valid(raise_exception=True)
         invoice = s.save()
+        auto_email_sent = self._auto_send_email_on_create(invoice)
         out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        payload = dict(out.data)
+        payload["auto_email_sent"] = auto_email_sent
+        return Response(payload, status=status.HTTP_201_CREATED)
+
+    def _auto_send_email_on_create(self, invoice: PurchaseInvoice) -> bool:
+        if not getattr(settings, "PURCHASE_AUTO_EMAIL_ON_CREATE", False):
+            return False
+
+        if invoice.status in [PurchaseInvoice.Status.DRAFT, PurchaseInvoice.Status.VOID]:
+            return False
+
+        to_email = (invoice.supplier.email or "").strip()
+        if not to_email:
+            return False
+
+        subject = build_purchase_email_subject(invoice)
+        body = build_purchase_email_body(invoice)
+        html_body = build_purchase_email_html(invoice)
+
+        try:
+            delivered_count = send_purchase_order_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+                html_body=html_body,
+            )
+            return delivered_count > 0
+        except RuntimeError as exc:
+            # Keep purchase creation successful even if email delivery fails.
+            logger.warning("Auto purchase email failed for invoice %s: %s", invoice.id, exc)
+            return False
 
     @action(detail=False, methods=["get"], url_path="export-csv")
     def export_csv(self, request):
@@ -159,6 +208,50 @@ class PurchaseInvoiceViewSet(
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
+    def confirm(self, request, pk=None):
+        invoice = self.get_object()
+
+        if invoice.status in [PurchaseInvoice.Status.CONFIRMED, PurchaseInvoice.Status.POSTED]:
+            raise ValidationError({"detail": "Invoice is already confirmed."})
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "VOID invoice cannot be confirmed."})
+        if invoice.status not in [PurchaseInvoice.Status.REQUEST, PurchaseInvoice.Status.DRAFT]:
+            raise ValidationError({"detail": f"Invoice in status {invoice.status} cannot be confirmed."})
+
+        lines = invoice.lines.select_related("item").all()
+        user = request.user
+
+        for line in lines:
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=line.item_id,
+                restaurant_id=invoice.restaurant_id,
+            )
+            item = item_qs.first()
+            if not item:
+                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+
+            item.current_stock = (item.current_stock + line.qty).quantize(Decimal("0.01"))
+            item.cost_per_unit = line.unit_cost
+            item.save(update_fields=["current_stock", "cost_per_unit", "updated_at"])
+
+            StockMovement.objects.create(
+                item=item,
+                restaurant=invoice.restaurant,
+                movement_type=StockMovement.Type.IN_,
+                quantity=line.qty,
+                reason="Purchase",
+                note=f"Confirm PurchaseInvoice #{invoice.id}",
+                created_by=user,
+            )
+
+        invoice.status = PurchaseInvoice.Status.CONFIRMED
+        invoice.save(update_fields=["status"])
+
+        out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
+        return Response(out.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    @transaction.atomic
     def void(self, request, pk=None):
         invoice = self.get_object()
 
@@ -170,50 +263,55 @@ class PurchaseInvoiceViewSet(
         reason = (s.validated_data.get("reason") or "").strip()
 
         lines = invoice.lines.select_related("item").all()
+        should_reverse_stock = invoice.status in [PurchaseInvoice.Status.CONFIRMED, PurchaseInvoice.Status.POSTED]
 
-        # pass 1: validate stock won't go negative
-        for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(pk=line.item_id)
-            if not request.user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=request.user.restaurant_id)
-
-            item = item_qs.first()
-            if not item:
-                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
-
-            new_stock = item.current_stock - line.qty
-            if new_stock < 0:
-                raise ValidationError(
-                    {
-                        "detail": (
-                            f"Cannot void: stock would go negative for {item.name} ({item.sku}). "
-                            f"Current={item.current_stock}, Need={line.qty}."
-                        )
-                    }
+        # pass 1: validate stock won't go negative (only when reversing stock)
+        if should_reverse_stock:
+            for line in lines:
+                item_qs = InventoryItem.objects.select_for_update().filter(
+                    pk=line.item_id,
+                    restaurant_id=invoice.restaurant_id,
                 )
 
-        # pass 2: apply reversal + movement
+                item = item_qs.first()
+                if not item:
+                    raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+
+                new_stock = item.current_stock - line.qty
+                if new_stock < 0:
+                    raise ValidationError(
+                        {
+                            "detail": (
+                                f"Cannot void: stock would go negative for {item.name} ({item.sku}). "
+                                f"Current={item.current_stock}, Need={line.qty}."
+                            )
+                        }
+                    )
+
+        # pass 2: apply reversal + movement (only when reversing stock)
         user = request.user
-        for line in lines:
-            item_qs = InventoryItem.objects.select_for_update().filter(pk=line.item_id)
-            if not user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=user.restaurant_id)
-            item = item_qs.first()
-            if not item:
-                raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
+        if should_reverse_stock:
+            for line in lines:
+                item_qs = InventoryItem.objects.select_for_update().filter(
+                    pk=line.item_id,
+                    restaurant_id=invoice.restaurant_id,
+                )
+                item = item_qs.first()
+                if not item:
+                    raise ValidationError({"detail": f"Item {line.item_id} not found in your restaurant."})
 
-            item.current_stock = (item.current_stock - line.qty).quantize(Decimal("0.01"))
-            item.save(update_fields=["current_stock", "updated_at"])
+                item.current_stock = (item.current_stock - line.qty).quantize(Decimal("0.01"))
+                item.save(update_fields=["current_stock", "updated_at"])
 
-            StockMovement.objects.create(
-                item=item,
-                restaurant=invoice.restaurant,
-                movement_type=StockMovement.Type.OUT,
-                quantity=line.qty,
-                reason="Purchase void",
-                note=f"Void PurchaseInvoice #{invoice.id}" + (f" — {reason}" if reason else ""),
-                created_by=user,
-            )
+                StockMovement.objects.create(
+                    item=item,
+                    restaurant=invoice.restaurant,
+                    movement_type=StockMovement.Type.OUT,
+                    quantity=line.qty,
+                    reason="Purchase void",
+                    note=f"Void PurchaseInvoice #{invoice.id}" + (f" — {reason}" if reason else ""),
+                    created_by=user,
+                )
 
         invoice.status = PurchaseInvoice.Status.VOID
         invoice.voided_at = timezone.now()
@@ -235,9 +333,9 @@ class PurchaseInvoiceViewSet(
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        supplier_qs = Supplier.objects.filter(pk=v["supplier"])
-        if not request.user.is_superuser:
-            supplier_qs = supplier_qs.filter(restaurant_id=request.user.restaurant_id)
+        restaurant = resolve_target_restaurant_for_request(request, v)
+
+        supplier_qs = Supplier.objects.filter(pk=v["supplier"], restaurant_id=restaurant.id)
         supplier = supplier_qs.first()
         if not supplier:
             raise ValidationError({"supplier": "Supplier not found in your restaurant."})
@@ -249,7 +347,7 @@ class PurchaseInvoiceViewSet(
         invoice_date = v.get("invoice_date") or timezone.localdate()
         note = (v.get("note") or "").strip()
 
-        restaurant_id = None if request.user.is_superuser else request.user.restaurant_id
+        restaurant_id = restaurant.id
         plan = build_ingredient_plan(
             horizon_days=horizon,
             top_n_items=top_n,
@@ -274,7 +372,7 @@ class PurchaseInvoiceViewSet(
             raise ValidationError({"detail": "No purchase needed (suggested_purchase_qty = 0 for all items)."})
 
         invoice = PurchaseInvoice.objects.create(
-            restaurant=request.user.restaurant,
+            restaurant=restaurant,
             supplier=supplier,
             invoice_no="",
             invoice_date=invoice_date,
@@ -291,7 +389,7 @@ class PurchaseInvoiceViewSet(
             i.id: i
             for i in InventoryItem.objects.filter(
                 id__in=[i for i, _ in draft_lines],
-                restaurant_id=request.user.restaurant_id,
+                restaurant_id=restaurant.id,
             )
         }
 
@@ -305,6 +403,7 @@ class PurchaseInvoiceViewSet(
             subtotal += line_total
 
             PurchaseLine.objects.create(
+                restaurant=invoice.restaurant,
                 invoice=invoice,
                 item_id=item_id,
                 qty=qty,
@@ -319,3 +418,98 @@ class PurchaseInvoiceViewSet(
 
         out = PurchaseInvoiceOutSerializer(invoice, context={"request": request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="send-whatsapp-order")
+    def send_whatsapp_order(self, request, pk=None):
+        """
+        POST /api/purchases/invoices/{id}/send-whatsapp-order/
+        Sends supplier purchase order summary as a WhatsApp message.
+        Optional payload: {"message": "custom text"}
+        """
+        invoice = self.get_object()
+
+        if invoice.status == PurchaseInvoice.Status.DRAFT:
+            raise ValidationError({"detail": "Cannot send WhatsApp message for DRAFT invoice."})
+
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "Cannot send WhatsApp message for VOID invoice."})
+
+        supplier_phone = (invoice.supplier.phone or "").strip()
+        normalized_phone = normalize_whatsapp_phone(
+            supplier_phone,
+            default_country_code=getattr(settings, "WHATSAPP_DEFAULT_COUNTRY_CODE", ""),
+        )
+        if not normalized_phone:
+            raise ValidationError({"detail": "Supplier phone number is missing or invalid."})
+
+        payload = PurchaseWhatsAppSendSerializer(data=request.data or {})
+        payload.is_valid(raise_exception=True)
+        custom_message = (payload.validated_data.get("message") or "").strip()
+
+        message_text = custom_message or build_purchase_whatsapp_message(invoice)
+
+        try:
+            provider_response = send_whatsapp_text_message(normalized_phone, message_text)
+        except RuntimeError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        return Response(
+            {
+                "success": True,
+                "invoice_id": invoice.id,
+                "supplier": invoice.supplier.name,
+                "to": normalized_phone,
+                "provider_response": provider_response,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="send-email-order")
+    def send_email_order(self, request, pk=None):
+        """
+        POST /api/purchases/invoices/{id}/send-email-order/
+        Sends supplier purchase order summary as an email.
+        Optional payload: {"to_email": "supplier@mail.com", "subject": "...", "message": "..."}
+        """
+        invoice = self.get_object()
+
+        if invoice.status == PurchaseInvoice.Status.DRAFT:
+            raise ValidationError({"detail": "Cannot send email for DRAFT invoice."})
+
+        if invoice.status == PurchaseInvoice.Status.VOID:
+            raise ValidationError({"detail": "Cannot send email for VOID invoice."})
+
+        payload = PurchaseEmailSendSerializer(data=request.data or {})
+        payload.is_valid(raise_exception=True)
+
+        to_email = (payload.validated_data.get("to_email") or invoice.supplier.email or "").strip()
+        if not to_email:
+            raise ValidationError({"detail": "Supplier email is missing."})
+
+        custom_subject = (payload.validated_data.get("subject") or "").strip()
+        custom_message = (payload.validated_data.get("message") or "").strip()
+
+        subject = custom_subject or build_purchase_email_subject(invoice)
+        body = custom_message or build_purchase_email_body(invoice)
+        html_body = build_purchase_email_html(invoice, custom_message=custom_message)
+
+        try:
+            delivered_count = send_purchase_order_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+                html_body=html_body,
+            )
+        except RuntimeError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        return Response(
+            {
+                "success": delivered_count > 0,
+                "invoice_id": invoice.id,
+                "supplier": invoice.supplier.name,
+                "to": to_email,
+                "subject": subject,
+            },
+            status=status.HTTP_200_OK,
+        )

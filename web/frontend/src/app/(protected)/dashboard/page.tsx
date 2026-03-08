@@ -1,11 +1,16 @@
-import { PaymentsOverview } from '@/components/Charts/payments-overview';
-import { UsedDevices } from '@/components/Charts/used-devices';
-import { WeeksProfit } from '@/components/Charts/weeks-profit';
-import { createTimeFrameExtractor } from '@/utils/timeframe-extractor';
-import { Suspense } from 'react';
-import { DashboardKpiCards } from './_components/overview-cards';
-import { OverviewCardsSkeleton } from './_components/overview-cards/skeleton';
-import { SalesOverview } from './_components/sales-overview';
+import { Suspense } from "react";
+import { createTimeFrameExtractor } from "@/utils/timeframe-extractor";
+
+// Components
+import { WeeksProfit } from "@/components/Charts/weeks-profit";
+import { DashboardKpiCards } from "./_components/overview-cards";
+import { OverviewCardsSkeleton } from "./_components/overview-cards/skeleton";
+import { SalesOverview } from "./_components/sales-overview";
+import { DashboardHeader } from "./_components/dashboard-header";
+import { DashboardDataProvider } from "./_components/dashboard-data-context";
+import { AlertsRow, ActivityRow } from "./_components/dashboard-widgets";
+import { DashboardCalendar } from "./_components/dashboard-calendar";
+import { QuickActionsRow } from "./_components/quick-actions";
 
 type PropsType = {
   searchParams: Promise<{
@@ -14,22 +19,46 @@ type PropsType = {
 };
 
 export default async function Home({ searchParams }: PropsType) {
+  // In Next.js 15+, searchParams is a Promise
   const { selected_time_frame } = await searchParams;
   const extractTimeFrame = createTimeFrameExtractor(selected_time_frame);
 
   return (
-    <>
-      <Suspense fallback={<OverviewCardsSkeleton />}>
-        <DashboardKpiCards />
-      </Suspense>
-      <div className='mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-9 2xl:gap-7.5'>
-        <SalesOverview className='col-span-12 xl:col-span-7' />
-        <WeeksProfit
-          key={extractTimeFrame('weeks_profit')}
-          timeFrame={extractTimeFrame('weeks_profit')?.split(':')[1]}
-          className='col-span-12 xl:col-span-5'
-        />
+    <main>
+      {/* Full-width Header with Cover Image */}
+      <div className="w-full">
+        <DashboardHeader />
       </div>
-    </>
+
+      {/* Content Section */}
+      <div className="w-full pt-8">
+        <div className="space-y-8">
+          <section>
+            <Suspense fallback={<OverviewCardsSkeleton />}>
+              <DashboardKpiCards />
+            </Suspense>
+          </section>
+
+          <DashboardDataProvider>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 xl:gap-8 items-start">
+              <div className="lg:col-span-8 flex flex-col gap-4 xl:gap-8">
+                {/* <AlertsRow /> */}
+                <QuickActionsRow />
+                <SalesOverview />
+              </div>
+
+              <div className="lg:col-span-4 flex flex-col gap-6 xl:gap-8">
+                <DashboardCalendar />
+                {/* <ActivityRow /> */}
+                <WeeksProfit
+                  key={extractTimeFrame("weeks_profit")}
+                  timeFrame={extractTimeFrame("weeks_profit")?.split(":")[1]}
+                />
+              </div>
+            </div>
+          </DashboardDataProvider>
+        </div>
+      </div>
+    </main>
   );
 }

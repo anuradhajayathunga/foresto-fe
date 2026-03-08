@@ -7,6 +7,11 @@ from rest_framework import serializers
 from inventory.models import InventoryItem, StockMovement
 from menu.models import MenuItem, RecipeLine
 from .models import Sale, SaleItem
+from .business_rules import (
+    aggregate_incoming_menu_qty,
+    get_prepared_limit_errors,
+    sync_auto_unsold_waste_for_date,
+)
 from core.tenant_utils import resolve_target_restaurant_for_request
 
 
@@ -86,15 +91,14 @@ class SaleCreateSerializer(serializers.Serializer):
         )
 
         subtotal = Decimal("0.00")
+        resolved_items = []
 
         for idx, it in enumerate(validated["items"]):
             qty = int(it["qty"])
             menu_item_id = it.get("menu_item")
 
             if menu_item_id:
-                mi_qs = MenuItem.objects.filter(id=menu_item_id)
-                if not user.is_superuser:
-                    mi_qs = mi_qs.filter(restaurant_id=user.restaurant_id)
+                mi_qs = MenuItem.objects.filter(id=menu_item_id, restaurant_id=restaurant.id)
                 mi = mi_qs.first()
                 if not mi:
                     raise serializers.ValidationError({"items": f"Menu item {menu_item_id} not found in your restaurant."})
@@ -112,15 +116,37 @@ class SaleCreateSerializer(serializers.Serializer):
             line_total = (Decimal(qty) * Decimal(unit_price)).quantize(Decimal("0.01"))
             subtotal += line_total
 
+            resolved_items.append(
+                {
+                    "qty": qty,
+                    "menu_item": menu_item,
+                    "name": name,
+                    "unit_price": unit_price,
+                    "line_total": line_total,
+                    "sort_order": idx,
+                }
+            )
+
+        if sale.status == Sale.Status.PAID:
+            incoming_qty = aggregate_incoming_menu_qty(resolved_items)
+            limit_errors = get_prepared_limit_errors(
+                restaurant_id=restaurant.id,
+                target_date=sale.sold_at.date(),
+                incoming_qty_by_menu=incoming_qty,
+            )
+            if limit_errors:
+                raise serializers.ValidationError({"items": limit_errors})
+
+        for resolved in resolved_items:
             SaleItem.objects.create(
                 restaurant=restaurant,
                 sale=sale,
-                menu_item=menu_item,
-                name=name,
-                qty=qty,
-                unit_price=unit_price,
-                line_total=line_total,
-                sort_order=idx,
+                menu_item=resolved["menu_item"],
+                name=resolved["name"],
+                qty=resolved["qty"],
+                unit_price=resolved["unit_price"],
+                line_total=resolved["line_total"],
+                sort_order=resolved["sort_order"],
             )
 
         total = (subtotal - discount + tax).quantize(Decimal("0.01"))
@@ -133,6 +159,11 @@ class SaleCreateSerializer(serializers.Serializer):
 
         if sale.status == Sale.Status.PAID:
             deduct_inventory_for_sale(sale)
+            sync_auto_unsold_waste_for_date(
+                restaurant_id=restaurant.id,
+                target_date=sale.sold_at.date(),
+                menu_item_ids=[int(mid) for mid in incoming_qty.keys()],
+            )
 
         return sale
 

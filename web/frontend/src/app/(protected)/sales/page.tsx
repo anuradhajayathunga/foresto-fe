@@ -58,7 +58,7 @@ import { CsvImporter } from '@/components/csv-importer';
 type Sale = {
   id: number;
   total: string;
-  created_at: string;
+  created_at?: string;
   payment_method: string;
   status: string;
 };
@@ -119,12 +119,16 @@ export default function SalesPage() {
       minimumFractionDigits: 2,
     }).format(val);
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-GB', {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
+  };
 
   const getStatusConfig = (status: string) => {
     const s = status.toLowerCase();
@@ -136,7 +140,7 @@ export default function SalesPage() {
             'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
           icon: CheckCircle2,
         };
-      case 'draf':
+      case 'draft':
         return {
           color:
             'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',

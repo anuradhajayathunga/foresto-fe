@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime, timedelta
 from io import TextIOWrapper
 from decimal import Decimal
 from django.db import transaction
@@ -17,6 +18,11 @@ from django.http import HttpResponse
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils import timezone
 from sales.models import Sale, SaleItem
+from sales.business_rules import (
+    aggregate_incoming_menu_qty,
+    get_prepared_limit_errors,
+    sync_auto_unsold_waste_for_date,
+)
 from core.tenant_utils import resolve_target_restaurant_for_request
 
 
@@ -78,7 +84,7 @@ class ImportCSVView(APIView):
             elif kind == "sales":
                 result = self.import_sales(reader, request, restaurant)
             else:
-                return Response({"detail": "Invalid kind. Use: categories | menu_items | ingredients | recipes"}, status=400)
+                return Response({"detail": "Invalid kind. Use: categories | menu_items | ingredients | recipes | sales"}, status=400)
 
             result["kind"] = kind
             result["dry_run"] = dry_run
@@ -252,8 +258,8 @@ class ImportCSVView(APIView):
     def import_recipes(self, reader, restaurant):
         """
         columns:
-          menu_item_name (required)
-          menu_category_slug OR menu_category_name (optional but recommended)
+          menu_item_slug (required)
+          menu_category_slug (required)
           ingredient_sku (required)
           qty (required)  # per 1 menu item
         """
@@ -263,32 +269,36 @@ class ImportCSVView(APIView):
 
         for idx, row in enumerate(reader, start=2):
             try:
-                menu_name = (row.get("menu_item_name") or "").strip()
-                if not menu_name:
-                    raise ValueError("menu_item_name is required")
+                data = self._normalized_row(row)
 
-                cat_slug = (row.get("menu_category_slug") or "").strip()
-                cat_name = (row.get("menu_category_name") or "").strip()
+                menu_item_slug = (data.get("menu_item_slug") or "").strip()
+                menu_category_slug = (data.get("menu_category_slug") or "").strip()
+                ingredient_sku = (data.get("ingredient_sku") or "").strip()
 
-                ingredient_sku = (row.get("ingredient_sku") or "").strip()
+                if not menu_item_slug:
+                    raise ValueError("menu_item_slug is required")
+                if not menu_category_slug:
+                    raise ValueError("menu_category_slug is required")
                 if not ingredient_sku:
                     raise ValueError("ingredient_sku is required")
 
-                qty = to_decimal(row.get("qty"))
+                qty = to_decimal(data.get("qty"))
                 if qty <= 0:
                     raise ValueError("qty must be > 0")
 
-                ingredient = InventoryItem.objects.get(restaurant=restaurant, sku=ingredient_sku)
-
-                # Find menu item (category filter helps if same names exist)
-                if cat_slug:
-                    category = Category.objects.get(restaurant=restaurant, slug=cat_slug)
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, name=menu_name)
-                elif cat_name:
-                    category = Category.objects.get(restaurant=restaurant, name=cat_name)
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, name=menu_name)
-                else:
-                    menu_item = MenuItem.objects.get(restaurant=restaurant, name=menu_name)
+                category = Category.objects.get(
+                    restaurant=restaurant,
+                    slug__iexact=menu_category_slug,
+                )
+                menu_item = MenuItem.objects.get(
+                    restaurant=restaurant,
+                    category=category,
+                    slug__iexact=menu_item_slug,
+                )
+                ingredient = InventoryItem.objects.get(
+                    restaurant=restaurant,
+                    sku__iexact=ingredient_sku,
+                )
 
                 obj, was_created = RecipeLine.objects.update_or_create(
                     menu_item=menu_item,
@@ -302,6 +312,18 @@ class ImportCSVView(APIView):
                 errors.append({"row": idx, "error": str(e), "data": row})
 
         return {"created": created, "updated": updated, "errors": errors}
+
+    def _normalized_row(self, row):
+        normalized = {}
+        for key, value in row.items():
+            if key is None:
+                continue
+            clean_key = str(key).strip().lower()
+            if isinstance(value, str):
+                normalized[clean_key] = value.strip()
+            else:
+                normalized[clean_key] = value
+        return normalized
 
     def import_sales(self, reader, request, restaurant):
         """
@@ -346,6 +368,17 @@ class ImportCSVView(APIView):
             s = (v or "").strip()
             if not s:
                 return timezone.now()
+
+            # Excel serial date support (e.g. 45432 or 45432.5)
+            try:
+                serial = float(s)
+                if serial > 0:
+                    base = datetime(1899, 12, 30)
+                    dt_from_serial = base + timedelta(days=serial)
+                    return timezone.make_aware(dt_from_serial)
+            except ValueError:
+                pass
+
             dt = parse_datetime(s)
             if dt:
                 return dt if timezone.is_aware(dt) else timezone.make_aware(dt)
@@ -353,7 +386,29 @@ class ImportCSVView(APIView):
             if d:
                 dt2 = timezone.datetime(d.year, d.month, d.day, 0, 0, 0)
                 return timezone.make_aware(dt2)
-            raise ValueError("Invalid sold_at (use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+
+            # Common CSV date formats from spreadsheets/exports.
+            date_formats = [
+                "%d/%m/%Y",
+                "%d/%m/%Y %H:%M",
+                "%d/%m/%Y %H:%M:%S",
+                "%Y/%m/%d",
+                "%Y/%m/%d %H:%M",
+                "%Y/%m/%d %H:%M:%S",
+                "%d-%m-%Y",
+                "%d-%m-%Y %H:%M",
+                "%d-%m-%Y %H:%M:%S",
+            ]
+            for fmt in date_formats:
+                try:
+                    parsed = datetime.strptime(s, fmt)
+                    return timezone.make_aware(parsed)
+                except ValueError:
+                    continue
+
+            raise ValueError(
+                "Invalid sold_at. Supported examples: 2026-03-08, 2026-03-08 14:30:00, 08/03/2026, 08/03/2026 14:30"
+            )
 
         # ✅ Always false for imports (so NO recipe deduction triggers)
         APPLY_INGREDIENTS = False
@@ -378,26 +433,7 @@ class ImportCSVView(APIView):
                 discount = to_decimal(first.get("discount"), default="0.00")
                 tax = to_decimal(first.get("tax"), default="0.00")
 
-                # idempotent: same sale_ref updates instead of duplicates
-                sale, was_created = Sale.objects.update_or_create(
-                    restaurant=restaurant,
-                    import_ref=sale_ref,
-                    defaults={
-                        "restaurant": restaurant,
-                        "sold_at": sold_at,
-                        "payment_method": payment_method,
-                        "status": status_val,
-                        "customer_name": customer_name,
-                        "notes": notes,
-                        "discount": discount,
-                        "tax": tax,
-                        "created_by": request.user,
-                    },
-                )
-
-                if not was_created:
-                    SaleItem.objects.filter(sale=sale).delete()
-
+                parsed_lines = []
                 subtotal = Decimal("0.00")
 
                 for sort_order, (row_idx, row) in enumerate(rows):
@@ -418,11 +454,21 @@ class ImportCSVView(APIView):
                     elif cat_slug and mi_slug:
                         category = Category.objects.get(restaurant=restaurant, slug=cat_slug)
                         menu_item = MenuItem.objects.get(restaurant=restaurant, category=category, slug=mi_slug)
+                    elif mi_slug:
+                        # Allow slug-only matching when category is not provided.
+                        slug_qs = MenuItem.objects.filter(restaurant=restaurant, slug=mi_slug)
+                        if slug_qs.count() > 1:
+                            raise ValueError(
+                                f"Row {row_idx}: menu_item_slug '{mi_slug}' matches multiple items. Add category_slug to disambiguate."
+                            )
+                        menu_item = slug_qs.first()
+                        if not menu_item:
+                            raise MenuItem.DoesNotExist()
                     elif item_name:
                         name = item_name
                     else:
                         raise ValueError(
-                            f"Row {row_idx}: provide menu_item_id OR (category_slug + menu_item_slug) OR item_name"
+                            f"Row {row_idx}: provide menu_item_slug (optionally with category_slug) OR item_name (menu_item_id is optional)"
                         )
 
                     unit_price = to_decimal(row.get("unit_price"), default=str(menu_item.price if menu_item else "0.00"))
@@ -432,16 +478,52 @@ class ImportCSVView(APIView):
                     line_total = (Decimal(qty) * Decimal(unit_price)).quantize(Decimal("0.01"))
                     subtotal += line_total
 
-                    SaleItem.objects.create(
-                        sale=sale,
-                        restaurant=restaurant,
-                        menu_item=menu_item,
-                        name=name,
-                        qty=qty,
-                        unit_price=unit_price,
-                        line_total=line_total,
-                        sort_order=sort_order,
+                    parsed_lines.append(
+                        {
+                            "sale": None,
+                            "restaurant": restaurant,
+                            "menu_item": menu_item,
+                            "name": name,
+                            "qty": qty,
+                            "unit_price": unit_price,
+                            "line_total": line_total,
+                            "sort_order": sort_order,
+                        }
                     )
+
+                if status_val == Sale.Status.PAID:
+                    incoming_qty = aggregate_incoming_menu_qty(parsed_lines)
+                    limit_errors = get_prepared_limit_errors(
+                        restaurant_id=restaurant.id,
+                        target_date=sold_at.date(),
+                        incoming_qty_by_menu=incoming_qty,
+                    )
+                    if limit_errors:
+                        raise ValueError("; ".join(limit_errors))
+
+                # idempotent: same sale_ref updates instead of duplicates
+                sale, was_created = Sale.objects.update_or_create(
+                    restaurant=restaurant,
+                    import_ref=sale_ref,
+                    defaults={
+                        "restaurant": restaurant,
+                        "sold_at": sold_at,
+                        "payment_method": payment_method,
+                        "status": status_val,
+                        "customer_name": customer_name,
+                        "notes": notes,
+                        "discount": discount,
+                        "tax": tax,
+                        "created_by": request.user,
+                    },
+                )
+
+                if not was_created:
+                    SaleItem.objects.filter(sale=sale).delete()
+
+                for line in parsed_lines:
+                    line["sale"] = sale
+                    SaleItem.objects.create(**line)
 
                 total = (subtotal - discount + tax).quantize(Decimal("0.01"))
                 if total < 0:
@@ -458,6 +540,13 @@ class ImportCSVView(APIView):
                 # Also mark it as NOT deducted (safe)
                 sale.inventory_deducted = False
                 sale.save()
+
+                if status_val == Sale.Status.PAID:
+                    sync_auto_unsold_waste_for_date(
+                        restaurant_id=restaurant.id,
+                        target_date=sold_at.date(),
+                        menu_item_ids=[int(mid) for mid in incoming_qty.keys()],
+                    )
 
                 created += 1 if was_created else 0
                 updated += 0 if was_created else 1
@@ -495,7 +584,7 @@ class DownloadCSVTemplateView(APIView):
                 "cost_per_unit", "current_stock", "is_active"
             ],
             "recipes": [
-                "menu_item_name", "menu_category_name", "ingredient_sku", "qty"
+                "menu_item_slug", "menu_category_slug", "ingredient_sku", "qty"
             ],
             "sales": [
                         "sale_ref",
@@ -508,7 +597,6 @@ class DownloadCSVTemplateView(APIView):
                         "notes",
                         "category_slug",
                         "menu_item_slug",
-                        "menu_item_id",
                         "item_name",
                         "qty",
                         "unit_price",
@@ -536,6 +624,6 @@ class DownloadCSVTemplateView(APIView):
         elif kind == "ingredients":
             writer.writerow(["FLOUR-001", "Wheat Flour", "kg", "10", "1.50", "100", "true"])
         elif kind == "recipes":
-            writer.writerow(["Chicken Soup", "Starters", "FLOUR-001", "0.2"])
+            writer.writerow(["chicken-soup", "starters", "FLOUR-001", "0.2"])
 
         return response

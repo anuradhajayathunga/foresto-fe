@@ -10,7 +10,8 @@ import {
   Calendar, 
   Building, 
   FileText,
-  AlertCircle 
+    AlertCircle,
+    ExternalLink,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,14 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+
+function extractKitchenRequestId(note?: string | null): number | null {
+    if (!note) return null;
+    const match = note.match(/KitchenPurchaseRequest\s*#(\d+)/i);
+    if (!match?.[1]) return null;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+}
 
 export default function PurchaseInvoiceDetailPage() {
   const params = useParams<{ id: string }>();
@@ -111,6 +120,7 @@ export default function PurchaseInvoiceDetailPage() {
   }
 
   const isVoid = inv.status === 'VOID';
+    const kitchenRequestId = extractKitchenRequestId(inv.note);
 
   return (
     <div className='max-w-6xl mx-auto space-y-6'>
@@ -133,6 +143,15 @@ export default function PurchaseInvoiceDetailPage() {
         </div>
 
         <div className='flex items-center gap-2'>
+                        {kitchenRequestId && (
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => router.push(`/kitchen/requests/${kitchenRequestId}`)}
+                            >
+                                <ExternalLink className="h-4 w-4" /> Open Kitchen Request
+                            </Button>
+                        )}
             <Button variant="outline" className="gap-2" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" /> Print
             </Button>

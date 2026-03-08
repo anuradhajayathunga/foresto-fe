@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework import serializers
 
-from inventory.models import InventoryItem, StockMovement
+from inventory.models import InventoryItem
 from .models import PurchaseInvoice, PurchaseLine, Supplier
 from core.tenant_utils import resolve_target_restaurant_for_request
 
@@ -31,6 +31,7 @@ class PurchaseInvoiceOutSerializer(serializers.ModelSerializer):
     restaurant = serializers.IntegerField(source="restaurant_id", read_only=True)
     supplier = serializers.IntegerField(source="supplier_id", read_only=True)
     supplier_name = serializers.CharField(source="supplier.name", read_only=True)
+    supplier_email = serializers.CharField(source="supplier.email", read_only=True)
     lines = PurchaseLineOutSerializer(many=True, read_only=True)
 
     class Meta:
@@ -40,6 +41,7 @@ class PurchaseInvoiceOutSerializer(serializers.ModelSerializer):
             "restaurant",
             "supplier",
             "supplier_name",
+            "supplier_email",
             "invoice_no",
             "invoice_date",
             "status",
@@ -90,9 +92,7 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "User has no restaurant assigned."})
 
         supplier_id = validated["supplier"]
-        supplier_qs = Supplier.objects.filter(pk=supplier_id)
-        if not user.is_superuser:
-            supplier_qs = supplier_qs.filter(restaurant_id=target_restaurant_id)
+        supplier_qs = Supplier.objects.filter(pk=supplier_id, restaurant_id=target_restaurant_id)
         supplier = supplier_qs.first()
         if not supplier:
             raise serializers.ValidationError({"supplier": "Supplier not found in your restaurant."})
@@ -109,15 +109,16 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
             tax=tax,
             note=validated.get("note", ""),
             created_by=user,
-            status=PurchaseInvoice.Status.POSTED,
+            status=PurchaseInvoice.Status.REQUEST,
         )
 
         subtotal = Decimal("0.00")
 
         for idx, l in enumerate(validated["lines"]):
-            item_qs =  InventoryItem.objects.select_for_update().filter(pk=l["item"], restaurant_id=target_restaurant_id,)
-            if not user.is_superuser:
-                item_qs = item_qs.filter(restaurant_id=user.restaurant_id)
+            item_qs = InventoryItem.objects.select_for_update().filter(
+                pk=l["item"],
+                restaurant_id=target_restaurant_id,
+            )
             item = item_qs.first()
             if not item:
                 raise serializers.ValidationError({"lines": f"Inventory item {l['item']} not found in your restaurant."})
@@ -135,20 +136,6 @@ class PurchaseInvoiceCreateSerializer(serializers.Serializer):
                 unit_cost=unit_cost,
                 line_total=line_total,
                 sort_order=idx,
-            )
-
-            item.current_stock = (item.current_stock + qty).quantize(Decimal("0.01"))
-            item.cost_per_unit = unit_cost
-            item.save(update_fields=["current_stock", "cost_per_unit", "updated_at"])
-
-            StockMovement.objects.create(
-                item=item,
-                restaurant=restaurant,
-                movement_type=StockMovement.Type.IN_,
-                quantity=qty,
-                reason="Purchase",
-                note=f"PurchaseInvoice #{invoice.id}",
-                created_by=user,
             )
 
         total = (subtotal - discount + tax).quantize(Decimal("0.01"))
@@ -175,3 +162,13 @@ class PurchaseDraftFromForecastSerializer(serializers.Serializer):
     invoice_date = serializers.DateField(required=False)
     note = serializers.CharField(required=False, allow_blank=True)
     restaurant_id = serializers.IntegerField(required=False)
+
+
+class PurchaseWhatsAppSendSerializer(serializers.Serializer):
+    message = serializers.CharField(required=False, allow_blank=True, max_length=2000)
+
+
+class PurchaseEmailSendSerializer(serializers.Serializer):
+    to_email = serializers.EmailField(required=False)
+    subject = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    message = serializers.CharField(required=False, allow_blank=True, max_length=5000)

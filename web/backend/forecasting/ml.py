@@ -14,5 +14,5 @@ def get_model():
     if not path or not os.path.exists(path):
         raise FileNotFoundError(f"Forecast model not found: {path}")
 
-    _MODEL = joblib.load(path)  # requires xgboost installed
+    _MODEL = joblib.load(path)  
     return _MODEL

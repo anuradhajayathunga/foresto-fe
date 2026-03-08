@@ -1,4 +1,4 @@
-import { authFetch } from "@/lib/auth";
+import { authFetch, unwrapList } from "@/lib/auth";
 
 export type Supplier = {
   id: number;
@@ -17,6 +17,7 @@ export type PurchaseInvoice = {
   id: number;
   supplier: number;
   supplier_name: string;
+  supplier_email?: string;
   invoice_no: string;
   invoice_date: string;
   subtotal: string;
@@ -40,7 +41,7 @@ export async function listSuppliers() {
   const res = await authFetch("/api/purchases/suppliers/?ordering=name");
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
-  return data as Supplier[];
+  return unwrapList<Supplier>(data);
 }
 
 export async function createSupplier(payload: Partial<Supplier>) {
@@ -59,7 +60,7 @@ export async function listPurchaseInvoices() {
   );
   const data = await res.json().catch(() => []);
   if (!res.ok) throw data;
-  return data as PurchaseInvoice[];
+  return unwrapList<PurchaseInvoice>(data);
 }
 
 export async function createPurchaseInvoice(payload: {
@@ -67,7 +68,7 @@ export async function createPurchaseInvoice(payload: {
   invoice_no?: string;
   invoice_date: string;
   discount?: string;
-  status?: "DRAFT" | "POSTED" | "VOID";
+  status?: "DRAFT" | "REQUEST" | "CONFIRMED" | "POSTED" | "VOID";
   tax?: string;
   note?: string;
   lines: PurchaseLineInput[];
@@ -116,6 +117,60 @@ export async function voidPurchaseInvoice(id: string, reason?: string) {
   if (!res.ok) throw data;
   return data as PurchaseInvoice;
 }
+
+export async function confirmPurchaseInvoice(id: string) {
+  const res = await authFetch(`/api/purchases/invoices/${id}/confirm/`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as PurchaseInvoice;
+}
+
+export async function sendPurchaseInvoiceWhatsApp(
+  id: string,
+  message?: string,
+) {
+  const res = await authFetch(
+    `/api/purchases/invoices/${id}/send-whatsapp-order/`,
+    {
+      method: "POST",
+      body: JSON.stringify({ message: message || "" }),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as {
+    success: boolean;
+    invoice_id: number;
+    supplier: string;
+    to: string;
+    provider_response: Record<string, unknown>;
+  };
+}
+
+export async function sendPurchaseInvoiceEmail(
+  id: string,
+  payload?: { to_email?: string; subject?: string; message?: string },
+) {
+  const res = await authFetch(
+    `/api/purchases/invoices/${id}/send-email-order/`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data as {
+    success: boolean;
+    invoice_id: number;
+    supplier: string;
+    to: string;
+    subject: string;
+  };
+}
+
 export async function createPurchaseDraftFromForecast(payload: {
   supplier: number;
   scope: "tomorrow" | "next7";

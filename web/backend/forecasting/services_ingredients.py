@@ -19,11 +19,6 @@ def build_ingredient_plan(
     scope: str = "next7",
     restaurant_id=None,
 ):
-    """
-    scope:
-      - tomorrow: use each item's predicted 'tomorrow'
-      - next7: use each item's predicted 'next_7_days_total'
-    """
     forecast = predict_menu_demand(
         horizon_days=horizon_days,
         top_n=top_n_items,

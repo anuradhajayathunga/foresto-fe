@@ -24,13 +24,26 @@ export type IngredientPlan = {
     }[];
   }[];
 };
+
+export type DemandForecastResponse = {
+  start_date: string;
+  horizon_days: number;
+  items: {
+    menu_item_id: number;
+    menu_item_name: string;
+    tomorrow: number;
+    next_7_days_total: number;
+    daily: { date: string; yhat: number }[];
+  }[];
+};
+
 export async function getDemandForecast(horizon_days = 7, top_n = 50) {
   const res = await authFetch(`/api/forecasting/demand/?horizon_days=${horizon_days}&top_n=${top_n}`, {
     method: "GET",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw data;
-  return data;
+  return data as DemandForecastResponse;
 }
 
 export async function getForecastHistory(days = 14, top_n = 50) {

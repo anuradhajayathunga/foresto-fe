@@ -11,8 +11,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
-# ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
-ALLOWED_HOSTS = []  # set via env when deploying
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[::1]"])
 
 
 INSTALLED_APPS = [
@@ -37,6 +36,7 @@ INSTALLED_APPS = [
     "purchases",
     "imports",
     "forecasting",
+    "kitchen",
 
 
 
@@ -89,7 +89,17 @@ DATABASES = {
 # ✅ CORS (allow both localhost and 127.0.0.1 to avoid token mismatch)
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:3000"],
+    default=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"],
+)
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
 )
 
 # If you later use cookies, you’ll need:
@@ -128,3 +138,31 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 FORECAST_MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# WhatsApp Cloud API (Meta)
+WHATSAPP_ENABLED = env.bool("WHATSAPP_ENABLED", default=False)
+WHATSAPP_API_BASE = env("WHATSAPP_API_BASE", default="https://graph.facebook.com")
+WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", default="v21.0")
+WHATSAPP_PHONE_NUMBER_ID = env("WHATSAPP_PHONE_NUMBER_ID", default="")
+WHATSAPP_ACCESS_TOKEN = env("WHATSAPP_ACCESS_TOKEN", default="")
+WHATSAPP_DEFAULT_COUNTRY_CODE = env("WHATSAPP_DEFAULT_COUNTRY_CODE", default="")
+
+# Purchase order email
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ishiwara.anu31@gmail.com")
+PURCHASE_EMAIL_FROM = env("PURCHASE_EMAIL_FROM", default="ishiwaraanuradha@gmail.com")
+PURCHASE_AUTO_EMAIL_ON_CREATE = env.bool("PURCHASE_AUTO_EMAIL_ON_CREATE", default=True)
+
+# SMTP/Email backend configuration
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=20)
