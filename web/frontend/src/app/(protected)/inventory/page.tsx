@@ -19,6 +19,8 @@ import {
   Activity,
   ArrowRight,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -465,6 +467,27 @@ function InventoryTable({
   onAction: (item: InventoryItem, type: "IN" | "OUT") => void;
   loading: boolean;
 }) {
+  const rowsPerPage = 10;
+  const [page, setPage] = useState(1);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(items.length / rowsPerPage)),
+    [items.length, rowsPerPage],
+  );
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return items.slice(start, start + rowsPerPage);
+  }, [items, page, rowsPerPage]);
+
+  useEffect(() => {
+    setPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const pageStart = items.length === 0 ? 0 : (page - 1) * rowsPerPage + 1;
+  const pageEnd =
+    items.length === 0 ? 0 : Math.min(page * rowsPerPage, items.length);
+
   if (loading) {
     return (
       <div className="p-8 text-center text-muted-foreground text-sm">
@@ -494,7 +517,7 @@ function InventoryTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((it) => {
+          {paginatedItems.map((it) => {
             const stock = num(it.current_stock);
             const reorder = num(it.reorder_level);
             const isLow = stock <= reorder;
@@ -639,6 +662,37 @@ function InventoryTable({
           )}
         </TableBody>
       </Table>
+
+      <div className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3 sm:px-6">
+        <p className="text-xs text-muted-foreground">
+          Showing {pageStart}-{pageEnd} of {items.length}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            aria-label="Previous inventory page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-16 text-center text-xs text-muted-foreground">
+            {page}/{totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            aria-label="Next inventory page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

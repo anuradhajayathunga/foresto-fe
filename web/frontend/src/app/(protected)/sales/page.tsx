@@ -22,6 +22,8 @@ import {
   FileDown,
   Globe,
   Banknote,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -64,10 +66,12 @@ type Sale = {
 };
 
 export default function SalesPage() {
+  const salesRowsPerPage = 12;
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [salesPage, setSalesPage] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -110,6 +114,27 @@ export default function SalesPage() {
         s.status.toLowerCase().includes(q)
     );
   }, [sales, search]);
+
+  const salesTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredSales.length / salesRowsPerPage)),
+    [filteredSales.length, salesRowsPerPage]
+  );
+
+  const paginatedSales = useMemo(() => {
+    const start = (salesPage - 1) * salesRowsPerPage;
+    return filteredSales.slice(start, start + salesRowsPerPage);
+  }, [filteredSales, salesPage, salesRowsPerPage]);
+
+  useEffect(() => {
+    setSalesPage((prev) => Math.min(prev, salesTotalPages));
+  }, [salesTotalPages]);
+
+  const salesPageStart =
+    filteredSales.length === 0 ? 0 : (salesPage - 1) * salesRowsPerPage + 1;
+  const salesPageEnd =
+    filteredSales.length === 0
+      ? 0
+      : Math.min(salesPage * salesRowsPerPage, filteredSales.length);
 
   // --- Formatters ---
   const formatCurrency = (val: number) =>
@@ -300,7 +325,7 @@ export default function SalesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSales.map((s) => {
+            {paginatedSales.map((s) => {
               const statusConfig = getStatusConfig(s.status);
               const StatusIcon = statusConfig.icon;
 
@@ -444,6 +469,39 @@ export default function SalesPage() {
             )}
           </TableBody>
         </Table>
+
+        <div className='flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3 sm:px-6'>
+          <p className='text-xs text-muted-foreground'>
+            Showing {salesPageStart}-{salesPageEnd} of {filteredSales.length}
+          </p>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='outline'
+              size='icon'
+              className='h-8 w-8'
+              onClick={() => setSalesPage((p) => Math.max(1, p - 1))}
+              disabled={salesPage <= 1}
+              aria-label='Previous sales page'
+            >
+              <ChevronLeft className='h-4 w-4' />
+            </Button>
+            <span className='min-w-16 text-center text-xs text-muted-foreground'>
+              {salesPage}/{salesTotalPages}
+            </span>
+            <Button
+              variant='outline'
+              size='icon'
+              className='h-8 w-8'
+              onClick={() =>
+                setSalesPage((p) => Math.min(salesTotalPages, p + 1))
+              }
+              disabled={salesPage >= salesTotalPages}
+              aria-label='Next sales page'
+            >
+              <ChevronRight className='h-4 w-4' />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
