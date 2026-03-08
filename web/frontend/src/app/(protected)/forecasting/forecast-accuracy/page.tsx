@@ -27,6 +27,8 @@ import {
   AlertCircle,
   Activity,
   Layers,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import {
@@ -527,10 +529,16 @@ const CustomChartTooltip = ({ active, payload, label }: any) => {
 
 // --- Main Component ---
 export default function ForecastAccuracyPage() {
+  const ingredientRowsPerPage = 12;
+  const bufferRowsPerPage = 12;
+  const analysisRowsPerPage = 12;
   const [dateFrom, setDateFrom] = useState(daysAgoISO(29));
   const [dateTo, setDateTo] = useState(todayISO());
   const [search, setSearch] = useState("");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
+  const [ingredientPage, setIngredientPage] = useState(1);
+  const [bufferPage, setBufferPage] = useState(1);
+  const [analysisPage, setAnalysisPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
   const [chartsReady, setChartsReady] = useState(false);
@@ -657,8 +665,93 @@ export default function ForecastAccuracyPage() {
     });
   }, [bufferPreview]);
 
+  const bufferTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(bufferPreviewRows.length / bufferRowsPerPage)),
+    [bufferPreviewRows.length, bufferRowsPerPage],
+  );
+
+  const paginatedBufferRows = useMemo(() => {
+    const start = (bufferPage - 1) * bufferRowsPerPage;
+    return bufferPreviewRows.slice(start, start + bufferRowsPerPage);
+  }, [bufferPreviewRows, bufferPage, bufferRowsPerPage]);
+
+  useEffect(() => {
+    setBufferPage((prev) => Math.min(prev, bufferTotalPages));
+  }, [bufferTotalPages]);
+
+  const bufferPageStart =
+    bufferPreviewRows.length === 0
+      ? 0
+      : (bufferPage - 1) * bufferRowsPerPage + 1;
+  const bufferPageEnd =
+    bufferPreviewRows.length === 0
+      ? 0
+      : Math.min(bufferPage * bufferRowsPerPage, bufferPreviewRows.length);
+
+  const ingredientTotalPages = useMemo(
+    () =>
+      Math.max(
+        1,
+        Math.ceil(
+          dashboard.ingredientWasteBreakdown.length / ingredientRowsPerPage,
+        ),
+      ),
+    [dashboard.ingredientWasteBreakdown.length, ingredientRowsPerPage],
+  );
+
+  const paginatedIngredientRows = useMemo(() => {
+    const start = (ingredientPage - 1) * ingredientRowsPerPage;
+    return dashboard.ingredientWasteBreakdown.slice(
+      start,
+      start + ingredientRowsPerPage,
+    );
+  }, [
+    dashboard.ingredientWasteBreakdown,
+    ingredientPage,
+    ingredientRowsPerPage,
+  ]);
+
+  useEffect(() => {
+    setIngredientPage((prev) => Math.min(prev, ingredientTotalPages));
+  }, [ingredientTotalPages]);
+
+  const ingredientPageStart =
+    dashboard.ingredientWasteBreakdown.length === 0
+      ? 0
+      : (ingredientPage - 1) * ingredientRowsPerPage + 1;
+  const ingredientPageEnd =
+    dashboard.ingredientWasteBreakdown.length === 0
+      ? 0
+      : Math.min(
+          ingredientPage * ingredientRowsPerPage,
+          dashboard.ingredientWasteBreakdown.length,
+        );
+
+  const analysisTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredRows.length / analysisRowsPerPage)),
+    [filteredRows.length, analysisRowsPerPage],
+  );
+
+  const paginatedAnalysisRows = useMemo(() => {
+    const start = (analysisPage - 1) * analysisRowsPerPage;
+    return filteredRows.slice(start, start + analysisRowsPerPage);
+  }, [filteredRows, analysisPage, analysisRowsPerPage]);
+
+  useEffect(() => {
+    setAnalysisPage((prev) => Math.min(prev, analysisTotalPages));
+  }, [analysisTotalPages]);
+
+  const analysisPageStart =
+    filteredRows.length === 0
+      ? 0
+      : (analysisPage - 1) * analysisRowsPerPage + 1;
+  const analysisPageEnd =
+    filteredRows.length === 0
+      ? 0
+      : Math.min(analysisPage * analysisRowsPerPage, filteredRows.length);
+
   return (
-    <div className="min-h-screen p-6 md:p-8 space-y-8 font-sans">
+    <div className="min-h-screen space-y-8 ">
       {/* 1. Header & Global Controls */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
@@ -992,7 +1085,7 @@ export default function ForecastAccuracyPage() {
         </Card> */}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* <div className="grid gap-6 xl:grid-cols-2">
         <Card className="shadow-sm border-slate-200/60">
           <CardHeader className="pb-4 border-b border-slate-100/50">
             <CardTitle className="text-base font-semibold  flex items-center gap-2">
@@ -1140,18 +1233,56 @@ export default function ForecastAccuracyPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* 5. Data Grid Section */}
       <Card className="shadow-sm border-slate-200/60 overflow-hidden">
-        <div className="border-b border-slate-200  p-5 lg:p-6">
-          <CardTitle className="text-lg font-semibold ">
-            Ingredient Waste Rate Table
-          </CardTitle>
-          <CardDescription className="text-sm mt-1">
-            Ingredient-level waste rates derived from recipe quantities and
-            menu-item waste.
-          </CardDescription>
+        <div className="border-b border-slate-200 p-5 lg:p-6 space-y-4">
+          <div>
+            <CardTitle className="text-lg font-semibold ">
+              Ingredient Waste Rate Table
+            </CardTitle>
+            <CardDescription className="text-sm mt-1">
+              Ingredient-level waste rates derived from recipe quantities and
+              menu-item waste.
+            </CardDescription>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              Showing {ingredientPageStart}-{ingredientPageEnd} of{" "}
+              {dashboard.ingredientWasteBreakdown.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIngredientPage((p) => Math.max(1, p - 1))}
+                disabled={ingredientPage <= 1}
+                aria-label="Previous ingredient page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-slate-600 min-w-16 text-center">
+                {ingredientPage}/{ingredientTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  setIngredientPage((p) =>
+                    Math.min(ingredientTotalPages, p + 1),
+                  )
+                }
+                disabled={ingredientPage >= ingredientTotalPages}
+                aria-label="Next ingredient page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -1189,7 +1320,7 @@ export default function ForecastAccuracyPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                dashboard.ingredientWasteBreakdown.map((row) => (
+                paginatedIngredientRows.map((row) => (
                   <TableRow
                     key={row.ingredient_id}
                     className="border-b border-slate-100"
@@ -1236,11 +1367,17 @@ export default function ForecastAccuracyPage() {
             </CardTitle>
             <CardDescription className="text-sm mt-1">
               Preview automatic `buffer_size` updates from waste patterns before
-              applying changes.
+              applying changes.{" "}
+              {bufferPreview && (
+                <div className="text-xs text-slate-500">
+                  Period: {bufferPreview.start_date} to {bufferPreview.end_date}{" "}
+                  | alpha: {bufferPreview.alpha}
+                </div>
+              )}
             </CardDescription>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
             <div className="space-y-1.5">
               <Label htmlFor="buffer-lookback">Lookback Days</Label>
               <Input
@@ -1291,20 +1428,47 @@ export default function ForecastAccuracyPage() {
               />
               Refresh Preview
             </Button>
-          </div>
-
-          {bufferPreview && (
-            <div className="text-xs text-slate-500">
-              Period: {bufferPreview.start_date} to {bufferPreview.end_date} |
-              alpha: {bufferPreview.alpha}
-            </div>
-          )}
+          </div> */}
 
           {bufferPreviewError && (
             <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {bufferPreviewError}
             </div>
           )}
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              Showing {bufferPageStart}-{bufferPageEnd} of{" "}
+              {bufferPreviewRows.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setBufferPage((p) => Math.max(1, p - 1))}
+                disabled={bufferPage <= 1}
+                aria-label="Previous buffer page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-slate-600 min-w-16 text-center">
+                {bufferPage}/{bufferTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  setBufferPage((p) => Math.min(bufferTotalPages, p + 1))
+                }
+                disabled={bufferPage >= bufferTotalPages}
+                aria-label="Next buffer page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -1342,7 +1506,7 @@ export default function ForecastAccuracyPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                bufferPreviewRows.map((row) => {
+                paginatedBufferRows.map((row) => {
                   const delta =
                     Number(row.new_buffer_size) - Number(row.old_buffer_size);
                   const deltaBadgeClass =
@@ -1391,40 +1555,76 @@ export default function ForecastAccuracyPage() {
       <Card className="shadow-sm border-slate-200/60 overflow-hidden">
         {/* Table Toolbar */}
         <div className="border-b border-slate-200  p-5 lg:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-              <CardTitle className="text-lg font-semibold ">
-                Analysis Data Grid
-              </CardTitle>
-              <CardDescription className="text-sm mt-1">
-                Line-by-line breakdown of {filteredRows.length} aggregated
-                records.
-              </CardDescription>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div>
+                <CardTitle className="text-lg font-semibold ">
+                  Analysis Data Grid
+                </CardTitle>
+                <CardDescription className="text-sm mt-1">
+                  Line-by-line breakdown of {filteredRows.length} aggregated
+                  records.
+                </CardDescription>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3  p-1.5 rounded-lg border border-slate-200">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search item or date..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 h-9  border-slate-200 shadow-sm text-sm focus-visible:ring-offset-0"
+                  />
+                </div>
+                <Select
+                  value={coverageFilter}
+                  onValueChange={(v) => setCoverageFilter(v as CoverageFilter)}
+                >
+                  <SelectTrigger className="h-9 w-full sm:w-[150px]  text-xs border-slate-200 shadow-sm focus:ring-offset-0">
+                    <SelectValue placeholder="Coverage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Records</SelectItem>
+                    <SelectItem value="with_forecast">Has Forecast</SelectItem>
+                    <SelectItem value="no_forecast">No Forecast</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3  p-1.5 rounded-lg border border-slate-200">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search item or date..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9  border-slate-200 shadow-sm text-sm focus-visible:ring-offset-0"
-                />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                Showing {analysisPageStart}-{analysisPageEnd} of{" "}
+                {filteredRows.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setAnalysisPage((p) => Math.max(1, p - 1))}
+                  disabled={analysisPage <= 1}
+                  aria-label="Previous analysis page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-600 min-w-16 text-center">
+                  {analysisPage}/{analysisTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() =>
+                    setAnalysisPage((p) => Math.min(analysisTotalPages, p + 1))
+                  }
+                  disabled={analysisPage >= analysisTotalPages}
+                  aria-label="Next analysis page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <Select
-                value={coverageFilter}
-                onValueChange={(v) => setCoverageFilter(v as CoverageFilter)}
-              >
-                <SelectTrigger className="h-9 w-full sm:w-[150px]  text-xs border-slate-200 shadow-sm focus:ring-offset-0">
-                  <SelectValue placeholder="Coverage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Records</SelectItem>
-                  <SelectItem value="with_forecast">Has Forecast</SelectItem>
-                  <SelectItem value="no_forecast">No Forecast</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
@@ -1491,7 +1691,7 @@ export default function ForecastAccuracyPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRows.map((row) => (
+                paginatedAnalysisRows.map((row) => (
                   <TableRow
                     key={row.key}
                     className="hover:/50 transition-colors group border-b border-slate-100"
