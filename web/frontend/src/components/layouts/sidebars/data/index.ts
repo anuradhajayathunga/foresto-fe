@@ -14,7 +14,7 @@ import {
   Store,
   Tablet,
   ShoppingBag,
-  ShoppingCart, 
+  ShoppingCart,
 } from "lucide-react";
 import { title } from "process";
 
@@ -36,10 +36,15 @@ interface NavSection {
 
 export const NAV_DATA: NavSection[] = [
   {
-    label: "",//Overview
+    label: "", //Overview
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, items: [] },
-      { title: "Point of Sale", url: "/sales", icon: ShoppingCart, items: [] }, 
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        items: [],
+      },
+      { title: "Point of Sale", url: "/sales", icon: ShoppingCart, items: [] },
     ],
   },
   {
@@ -54,16 +59,28 @@ export const NAV_DATA: NavSection[] = [
     label: "Supply Chain",
     items: [
       { title: "Inventory", url: "/inventory", icon: Package, items: [] },
-      { title: "Purchase Orders", url: "/purchases", icon: ClipboardList, items: [] },
+      {
+        title: "Purchase Orders",
+        url: "/purchases",
+        icon: ClipboardList,
+        items: [],
+      },
       { title: "Suppliers", url: "/suppliers", icon: Truck, items: [] },
     ],
   },
   {
     label: "Analytics & Intelligence",
     items: [
-      { title: "AI Forecast", url: "/forecasting", icon: Sparkles, items: [
-        { title: "Analytics", url: "/forecasting/analytics", onClick: () => window.open("http://localhost:3001/analytics", "_blank") }
-      ] },
+      {
+        title: "AI Forecast",
+        url: "/forecasting",
+        icon: Sparkles,
+        items: [
+          { title: "Predictive Analytics", url: "/predict" },
+          { title: "Analytics", url: "/analytics" },
+          { title: "AI Assistant", url: "/ai" },
+        ],
+      },
     ],
   },
   {
