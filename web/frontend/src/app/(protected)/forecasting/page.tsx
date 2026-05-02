@@ -656,25 +656,38 @@ export default function UnifiedForecastPage() {
                   Actual Sales vs. AI Prediction (Past 14 Days)
                 </CardDescription>
               </div>
-              <div className="w-[200px]">
-                <Select
-                  value={selectedChartId}
-                  onValueChange={setSelectedChartId}
+              <div className="flex items-center gap-0">
+                <div className="w-[200px]">
+                  <Select
+                    value={selectedChartId}
+                    onValueChange={setSelectedChartId}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select Item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {historyData?.items?.map((x: any) => (
+                        <SelectItem
+                          key={x.menu_item_id}
+                          value={String(x.menu_item_id)}
+                        >
+                          {x.menu_item_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() =>
+                    window.open("http://localhost:3001/analytics", "_blank")
+                  }
                 >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select Item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {historyData?.items?.map((x: any) => (
-                      <SelectItem
-                        key={x.menu_item_id}
-                        value={String(x.menu_item_id)}
-                      >
-                        {x.menu_item_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Analytics
+                </Button>
               </div>
             </div>
           </CardHeader>
