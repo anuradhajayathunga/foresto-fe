@@ -417,6 +417,36 @@ Recommended:
 - Use PostgreSQL (managed DB if possible)
 - Serve with Gunicorn/Uvicorn behind Nginx (or a PaaS)
 
+### Azure App Service (Linux)
+
+This backend is configured to run on Azure App Service with WhiteNoise serving static assets and a Gunicorn startup command.
+
+1. Create an Azure Database for PostgreSQL and copy its connection string into `DATABASE_URL`.
+2. Create an Azure App Service using Linux + Python, then set these app settings:
+
+- `DEBUG=False`
+- `SECRET_KEY=<strong-random-secret>`
+- `ALLOWED_HOSTS=<your-app>.azurewebsites.net,<your-custom-domain>`
+- `CORS_ALLOWED_ORIGINS=<your-frontend-url>`
+- `CSRF_TRUSTED_ORIGINS=<your-frontend-url>,https://<your-app>.azurewebsites.net`
+- `DATABASE_URL=postgresql://...?...sslmode=require`
+
+3. Set the Startup Command to:
+
+```bash
+bash startup.sh
+```
+
+4. Deploy the backend code, then verify these endpoints:
+
+- `/admin/`
+- `/api/auth/`
+- one representative endpoint from your business modules
+
+5. If your frontend is hosted elsewhere, point its API base URL to the Azure App Service URL.
+
+The file [web/backend/.env.azure.example](.env.azure.example) is a safe starter template for the Azure environment variables.
+
 ---
 
 ## Version Control & Collaboration
