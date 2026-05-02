@@ -67,17 +67,24 @@ foresto/
      │   ├── config/
      │   ├── apps/
      │   ├── requirements.txt
+     │   ├── requirements-azure.txt  # Extra production deps (gunicorn, whitenoise)
+     │   ├── Dockerfile          # Container image for Azure App Service
+     │   ├── startup.sh          # Azure App Service startup script (non-Docker)
      │   ├── .env.example
+     │   ├── .env.azure.example  # Azure-specific env vars reference
      │   └── ...
      ├── frontend/               # Next.js web app
      │   ├── public/
      │   ├── src/
+     │   ├── Dockerfile          # Container image for Azure App Service
      │   ├── package.json
      │   ├── .env.example
      │   └── ...
      ├── docker-compose.yml      # For fullstack local/dev/production
      ├── .github/                # CI/CD workflows
      │    └── workflows/
+     │         ├── deploy-backend-azure.yml   # Deploy backend to Azure App Service
+     │         └── deploy-frontend-azure.yml  # Deploy frontend to Azure Static Web Apps
      ├── README.md               # (You are here)
      └── LICENSE
 ```
@@ -293,6 +300,159 @@ npm run test
 
 
 ## 🚢 Deployment
+
+### 🔵 Azure (Recommended – Full Setup)
+
+#### Prerequisites
+
+| Tool | Purpose |
+|------|---------|
+| [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) | Manage Azure resources |
+| [Docker Desktop](https://docs.docker.com/get-docker/) | Build container images |
+| An [Azure account](https://azure.microsoft.com/free/) | Cloud platform |
+
+---
+
+#### Architecture on Azure
+
+```
+GitHub Actions
+├── deploy-backend-azure.yml  → Azure App Service  (Django + Gunicorn)
+│                                └── Azure Container Registry (Docker image)
+│                                └── Azure Database for PostgreSQL
+└── deploy-frontend-azure.yml → Azure Static Web Apps  (Next.js SSR/SSG)
+```
+
+---
+
+#### Step 1 – Create Azure Resources
+
+```bash
+# Log in
+az login
+
+# Set variables
+RG=foresto-rg
+LOCATION=eastus
+ACR_NAME=forestoacr          # must be globally unique
+BACKEND_APP=foresto-backend  # must be globally unique
+DB_SERVER=foresto-db         # must be globally unique
+
+# Resource group
+az group create --name $RG --location $LOCATION
+
+# Azure Container Registry
+az acr create --resource-group $RG --name $ACR_NAME --sku Basic --admin-enabled true
+
+# App Service Plan (Linux, B1 tier – free trial eligible)
+az appservice plan create --name foresto-plan --resource-group $RG \
+  --is-linux --sku B1
+
+# Backend Web App (Docker container)
+az webapp create --resource-group $RG --plan foresto-plan \
+  --name $BACKEND_APP \
+  --deployment-container-image-name "${ACR_NAME}.azurecr.io/foresto-backend:latest"
+
+# Azure Database for PostgreSQL – Flexible Server
+az postgres flexible-server create \
+  --resource-group $RG \
+  --name $DB_SERVER \
+  --admin-user foresto_user \
+  --admin-password "YourStrongPassword!" \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --version 16 \
+  --database-name foresto_db \
+  --public-access 0.0.0.0
+
+# Allow App Service to reach the database
+az postgres flexible-server firewall-rule create \
+  --resource-group $RG --name $DB_SERVER \
+  --rule-name allow-azure-services \
+  --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+
+# Azure Static Web Apps (Frontend – Next.js)
+az staticwebapp create \
+  --name foresto-frontend \
+  --resource-group $RG \
+  --source https://github.com/<your-org>/foresto \
+  --branch main \
+  --app-location "web/frontend" \
+  --login-with-github
+```
+
+---
+
+#### Step 2 – Configure GitHub Secrets & Variables
+
+Go to **Settings → Secrets and variables → Actions** in your GitHub repository and add:
+
+| Secret / Variable | Value |
+|---|---|
+| `AZURE_CREDENTIALS` | Output of `az ad sp create-for-rbac` (see below) |
+| `ACR_USERNAME` | Output of `az acr credential show --name $ACR_NAME --query username -o tsv` |
+| `ACR_PASSWORD` | Output of `az acr credential show --name $ACR_NAME --query passwords[0].value -o tsv` |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment token from Azure Portal → Static Web App → Manage deployment token |
+| `AZURE_BACKEND_APP_NAME` *(variable)* | `foresto-backend` |
+| `AZURE_CONTAINER_REGISTRY` *(variable)* | `forestoacr.azurecr.io` |
+| `AZURE_RESOURCE_GROUP` *(variable)* | `foresto-rg` |
+| `NEXT_PUBLIC_API_BASE_URL` *(variable)* | `https://foresto-backend.azurewebsites.net` |
+
+**Create service principal:**
+```bash
+az ad sp create-for-rbac \
+  --name foresto-github-actions \
+  --role contributor \
+  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/$RG \
+  --sdk-auth
+```
+
+---
+
+#### Step 3 – Set Backend Environment Variables on Azure
+
+```bash
+az webapp config appsettings set \
+  --resource-group $RG \
+  --name $BACKEND_APP \
+  --settings \
+    SECRET_KEY="your-strong-secret-key" \
+    DEBUG="0" \
+    ALLOWED_HOSTS="${BACKEND_APP}.azurewebsites.net" \
+    DATABASE_URL="postgresql://foresto_user:YourStrongPassword!@${DB_SERVER}.postgres.database.azure.com:5432/foresto_db?sslmode=require" \
+    CORS_ALLOWED_ORIGINS="https://your-frontend.azurestaticapps.net" \
+    CSRF_TRUSTED_ORIGINS="https://${BACKEND_APP}.azurewebsites.net" \
+    WEBSITES_PORT="8000"
+```
+
+See [`web/backend/.env.azure.example`](web/backend/.env.azure.example) for the full list of supported variables.
+
+---
+
+#### Step 4 – Deploy
+
+Push to the `main` branch or trigger the workflows manually from **Actions** tab:
+
+```bash
+git push origin main
+```
+
+- `deploy-backend-azure.yml` builds the Docker image, pushes to ACR, and deploys to Azure App Service.
+- `deploy-frontend-azure.yml` deploys the Next.js app to Azure Static Web Apps (with automatic PR preview environments).
+
+---
+
+### 🐳 Docker (Local / Self-Hosted)
+
+```bash
+cd web
+docker compose up --build
+```
+
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend API: [http://localhost:8000](http://localhost:8000)
+
+---
 
 ### Frontend (Vercel)
 
