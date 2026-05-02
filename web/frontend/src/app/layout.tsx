@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Poppins, Noto_Sans_Sinhala } from 'next/font/google'
+// @ts-expect-error -- Next.js handles global CSS side-effect imports
 import './globals.css'
 import { Providers } from './providers'
 import type { PropsWithChildren } from 'react'
