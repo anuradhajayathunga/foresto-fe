@@ -130,7 +130,7 @@ export default function AIPage() {
   }
 
   return (
-    <div className="p-8 h-[calc(100vh-0px)] flex flex-col gap-6">
+    <div className="p-8 h-[calc(80vh-0px)] flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
