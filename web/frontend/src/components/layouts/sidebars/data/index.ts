@@ -1,3 +1,4 @@
+import { ComponentType } from "react";
 import {
   Settings,
   Package,
@@ -15,17 +16,19 @@ import {
   ShoppingBag,
   ShoppingCart, 
 } from "lucide-react";
+import { title } from "process";
 
 interface NavItem {
   title: string;
   url: string;
+  onClick?: () => void;
 }
 
 interface NavSection {
   label: string;
   items: Array<{
     title: string;
-    icon: React.ComponentType;
+    icon: ComponentType<any>;
     items: NavItem[];
     url?: string;
   }>;
@@ -58,7 +61,9 @@ export const NAV_DATA: NavSection[] = [
   {
     label: "Analytics & Intelligence",
     items: [
-      { title: "AI Forecast", url: "/forecasting", icon: Sparkles, items: [] },
+      { title: "AI Forecast", url: "/forecasting", icon: Sparkles, items: [
+        { title: "Analytics", url: "/forecasting/analytics", onClick: () => window.open("http://localhost:3001/analytics", "_blank") }
+      ] },
     ],
   },
   {
