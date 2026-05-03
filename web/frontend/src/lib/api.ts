@@ -1,10 +1,8 @@
-const BASE =
-  typeof window === "undefined"
-    ? "http://127.0.0.1:8080" // server-side (Next.js server components)
-    : "/api"; // client-side (proxied via next.config.js)
+const ML_BASE = process.env.NEXT_PUBLIC_ML_API_URL ?? "";
+const ML_ENDPOINT = ML_BASE.replace(/\/$/, "");
 
 export async function fetchSummary() {
-  const res = await fetch(`${BASE}/analytics/summary`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/summary`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch summary");
@@ -12,7 +10,7 @@ export async function fetchSummary() {
 }
 
 export async function fetchRestaurants() {
-  const res = await fetch(`${BASE}/analytics/restaurants`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/restaurants`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch restaurants");
@@ -20,7 +18,7 @@ export async function fetchRestaurants() {
 }
 
 export async function fetchItems() {
-  const res = await fetch(`${BASE}/analytics/items`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/items`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch items");
@@ -28,7 +26,7 @@ export async function fetchItems() {
 }
 
 export async function fetchHolidays() {
-  const res = await fetch(`${BASE}/analytics/holidays`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/holidays`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch holidays");
@@ -36,7 +34,7 @@ export async function fetchHolidays() {
 }
 
 export async function fetchWeeklyPattern() {
-  const res = await fetch(`${BASE}/analytics/weekly_pattern`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/weekly_pattern`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch weekly pattern");
@@ -44,7 +42,7 @@ export async function fetchWeeklyPattern() {
 }
 
 export async function fetchMonthlyPattern() {
-  const res = await fetch(`${BASE}/analytics/monthly_pattern`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/monthly_pattern`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch monthly pattern");
@@ -56,7 +54,7 @@ export async function fetchDailySales(restaurant?: string, item?: string) {
   if (restaurant) params.set("restaurant", restaurant);
   if (item) params.set("item", item);
   const query = params.toString() ? `?${params}` : "";
-  const res = await fetch(`${BASE}/analytics/daily${query}`, {
+  const res = await fetch(`${ML_ENDPOINT}/analytics/daily${query}`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch daily sales");
@@ -68,7 +66,7 @@ export async function fetchForecastResults(restaurant?: string, item?: string) {
   if (restaurant) params.set("restaurant", restaurant);
   if (item) params.set("item", item);
   const query = params.toString() ? `?${params}` : "";
-  const res = await fetch(`${BASE}/forecast/results${query}`, {
+  const res = await fetch(`${ML_ENDPOINT}/forecast/results${query}`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch forecast results");
@@ -76,7 +74,7 @@ export async function fetchForecastResults(restaurant?: string, item?: string) {
 }
 
 export async function fetchForecastAccuracy() {
-  const res = await fetch(`${BASE}/forecast/accuracy`, {
+  const res = await fetch(`${ML_ENDPOINT}/forecast/accuracy`, {
     next: { revalidate: 60 },
   });
   if (!res.ok) throw new Error("Failed to fetch forecast accuracy");
@@ -85,20 +83,24 @@ export async function fetchForecastAccuracy() {
 
 export async function fetchWeather(date: string, location: string) {
   const params = new URLSearchParams({ date, location });
-  const res = await fetch(`${BASE}/weather?${params}`, { cache: "no-store" });
+  const res = await fetch(`${ML_ENDPOINT}/weather?${params}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch weather");
   return res.json();
 }
 
 export async function fetchCalendar() {
-  const res = await fetch(`${BASE}/calendar`, { next: { revalidate: 300 } });
+  const res = await fetch(`${ML_ENDPOINT}/calendar`, {
+    next: { revalidate: 300 },
+  });
   if (!res.ok) throw new Error("Failed to fetch calendar");
   return res.json();
 }
 
 export async function fetchHolidayForDate(date: string) {
   const res = await fetch(
-    `${BASE}/calendar/lookup?date=${encodeURIComponent(date)}`,
+    `${ML_ENDPOINT}/calendar/lookup?date=${encodeURIComponent(date)}`,
     { cache: "no-store" },
   );
   if (!res.ok) return { holiday_name: "None", is_holiday: false };
@@ -106,7 +108,9 @@ export async function fetchHolidayForDate(date: string) {
 }
 
 export async function fetchModelInfo() {
-  const res = await fetch(`${BASE}/model/info`, { next: { revalidate: 300 } });
+  const res = await fetch(`${ML_ENDPOINT}/model/info`, {
+    next: { revalidate: 300 },
+  });
   if (!res.ok) throw new Error("Failed to fetch model info");
   return res.json();
 }
@@ -119,7 +123,7 @@ export async function predictSingle(payload: {
   temperature?: number;
   holiday_name?: string;
 }) {
-  const res = await fetch(`${BASE}/predict`, {
+  const res = await fetch(`${ML_ENDPOINT}/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -135,7 +139,7 @@ export async function aiChat(
   messages: { role: string; content: string }[],
   context?: Record<string, unknown>,
 ) {
-  const res = await fetch(`${BASE}/ai/chat`, {
+  const res = await fetch(`${ML_ENDPOINT}/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages, context }),
@@ -145,7 +149,7 @@ export async function aiChat(
 }
 
 export async function aiInsights() {
-  const res = await fetch(`${BASE}/ai/insights`, {
+  const res = await fetch(`${ML_ENDPOINT}/ai/insights`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
@@ -155,7 +159,7 @@ export async function aiInsights() {
 }
 
 export async function aiExplain(prediction: Record<string, unknown>) {
-  const res = await fetch(`${BASE}/ai/explain`, {
+  const res = await fetch(`${ML_ENDPOINT}/ai/explain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prediction }),
@@ -166,7 +170,7 @@ export async function aiExplain(prediction: Record<string, unknown>) {
 
 export async function aiRecommend(location?: string) {
   const params = location ? `?location=${encodeURIComponent(location)}` : "";
-  const res = await fetch(`${BASE}/ai/recommend${params}`);
+  const res = await fetch(`${ML_ENDPOINT}/ai/recommend${params}`);
   if (!res.ok) throw new Error("AI recommend failed");
   return res.json();
 }
@@ -176,7 +180,7 @@ export async function aiForecastNarrative(
   item: string,
   location: string,
 ) {
-  const res = await fetch(`${BASE}/ai/forecast-narrative`, {
+  const res = await fetch(`${ML_ENDPOINT}/ai/forecast-narrative`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ forecast_data: forecastData, item, location }),
