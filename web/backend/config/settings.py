@@ -8,35 +8,93 @@ from urllib.parse import urlparse, parse_qsl
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(DEBUG=(bool, False))
-environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
+# ─────────────────────────────────────────────────────
+# ✅ Load .env ONLY for local development
+# Azure uses Configuration → Application Settings
+# ─────────────────────────────────────────────────────
+dotenv_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(dotenv_path):
+    print("[settings] ✅ Local: Loading .env file")
+    environ.Env.read_env(dotenv_path)
+else:
+    print("[settings] ✅ Azure: Using Application Settings env vars")
+
+# ─────────────────────────────────────────────────────
+# Core Settings
+# ─────────────────────────────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 
-# ---------------------------------------------------------------------------
+# ✅ Azure automatically provides WEBSITE_HOSTNAME
+AZURE_HOSTNAME = os.environ.get("WEBSITE_HOSTNAME", "")
+
+print(f"[settings] AZURE_HOSTNAME  : '{AZURE_HOSTNAME}'")
+print(f"[settings] DEBUG           : {DEBUG}")
+print(f"[settings] BASE_DIR        : {BASE_DIR}")
+print(f"[settings] .env exists     : {os.path.exists(dotenv_path)}")
+
+# ─────────────────────────────────────────────────────
 # ALLOWED HOSTS
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 ALLOWED_HOSTS = env.list(
     "ALLOWED_HOSTS",
     default=["localhost", "127.0.0.1", "[::1]"],
 )
 
-# ✅ Azure sets WEBSITE_HOSTNAME automatically - no need to hardcode!
-AZURE_HOSTNAME = os.environ.get("WEBSITE_HOSTNAME", "")
+# ✅ Auto add Azure hostname
 if AZURE_HOSTNAME and AZURE_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(AZURE_HOSTNAME)
 
-# ✅ Wildcard for all azurewebsites.net
+# ✅ Wildcard for azurewebsites.net
 if ".azurewebsites.net" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(".azurewebsites.net")
 
-print(f"[settings] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
-print(f"[settings] AZURE_HOSTNAME: {AZURE_HOSTNAME}")
-print(f"[settings] DEBUG: {DEBUG}")
+print(f"[settings] ALLOWED_HOSTS   : {ALLOWED_HOSTS}")
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
+# CORS
+# ─────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
+)
+
+if AZURE_HOSTNAME:
+    azure_origin = f"https://{AZURE_HOSTNAME}"
+    if azure_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(azure_origin)
+
+# ─────────────────────────────────────────────────────
+# CSRF
+# ─────────────────────────────────────────────────────
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://*.azurewebsites.net",
+    ],
+)
+
+if AZURE_HOSTNAME:
+    azure_origin = f"https://{AZURE_HOSTNAME}"
+    if azure_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(azure_origin)
+
+print(f"[settings] CSRF_ORIGINS    : {CSRF_TRUSTED_ORIGINS}")
+print(f"[settings] CORS_ORIGINS    : {CORS_ALLOWED_ORIGINS}")
+
+# ─────────────────────────────────────────────────────
 # Installed Apps
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,13 +102,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    # 3rd party
     "corsheaders",
     "rest_framework",
     "django_filters",
-
-    # local apps
     "core",
     "accounts",
     "menu",
@@ -62,9 +116,9 @@ INSTALLED_APPS = [
     "kitchen",
 ]
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Middleware
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -100,39 +154,56 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # ---------------------------------------------------------------------------
 def _resolve_ipv4(hostname, port):
-    """
-    Resolve hostname to IPv4 address.
-    Prevents psycopg3 from picking an IPv6 address on Railway,
-    which has no IPv6 network route (causes 'Network is unreachable').
-    """
+    """Force IPv4 - Azure App Service has no IPv6 outbound"""
+
+    if ":" in str(hostname):
+        print(f"[settings] ❌ IPv6 detected: {hostname}")
+        return hostname
+
     try:
         results = socket.getaddrinfo(
             hostname,
             port,
-            socket.AF_INET,       # IPv4 only
+            socket.AF_INET,
             socket.SOCK_STREAM,
         )
-        return results[0][4][0]
-    except Exception:
-        return hostname           # fall back to original hostname
+        if results:
+            ipv4 = results[0][4][0]
+            print(f"[settings] ✅ DB resolved: {hostname} → {ipv4}")
+            return ipv4
+        return hostname
+
+    except socket.gaierror as e:
+        print(f"[settings] ❌ DNS error: {e}")
+        return hostname
+    except Exception as e:
+        print(f"[settings] ❌ Error: {e}")
+        return hostname
 
 
 database_url = env("DATABASE_URL", default="")
+print(f"[settings] DATABASE_URL set: {bool(database_url)}")
 
 if database_url:
     _parsed = urlparse(database_url)
-    _hostname = _parsed.hostname
+    _hostname = _parsed.hostname or ""
     _port = _parsed.port or 5432
+
+    print(f"[settings] DB hostname: {_hostname}")
+    print(f"[settings] DB port    : {_port}")
 
     _host_ipv4 = _resolve_ipv4(_hostname, _port)
 
-    if _host_ipv4 != _hostname:
-        print(f"[settings] DB host resolved: {_hostname} → {_host_ipv4}")
-    else:
-        print(f"[settings] DB host (unchanged): {_hostname}")
-
     _query_options = dict(parse_qsl(_parsed.query))
+
+    # ✅ Extract known options
     _sslmode = _query_options.pop("sslmode", "require")
+
+    # ✅ pgbouncer=true → disable prepared statements
+    _pgbouncer = _query_options.pop("pgbouncer", "false").lower() == "true"
+
+    # ✅ Remove channel_binding (not supported by psycopg2)
+    _query_options.pop("channel_binding", None)
 
     DATABASES = {
         "default": {
@@ -142,15 +213,23 @@ if database_url:
             "PASSWORD": _parsed.password,
             "HOST": _host_ipv4,
             "PORT": _port,
-            "CONN_MAX_AGE": 60,
+            "CONN_MAX_AGE": 0 if _pgbouncer else 60,  # ✅ 0 for pgbouncer
             "OPTIONS": {
                 "sslmode": _sslmode,
-                **_query_options,
+                # ✅ Disable prepared statements for pgbouncer
+                **({"options": "-c default_transaction_isolation=read committed"} if _pgbouncer else {}),
             },
         }
     }
 
+    print(f"[settings] DB NAME     : {_parsed.path.lstrip('/')}")
+    print(f"[settings] DB HOST     : {_host_ipv4}")
+    print(f"[settings] DB PORT     : {_port}")
+    print(f"[settings] SSL MODE    : {_sslmode}")
+    print(f"[settings] PGBOUNCER   : {_pgbouncer}")
+
 else:
+    print("[settings] ⚠️  No DATABASE_URL - using individual DB vars")
     DATABASES = {
         "default": {
             "ENGINE": env("DB_ENGINE", default="django.db.backends.postgresql"),
@@ -162,45 +241,10 @@ else:
         }
     }
 
-# ---------------------------------------------------------------------------
-# CORS / CSRF
-# ---------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS",
-    default=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
-)
-
-CSRF_TRUSTED_ORIGINS = env.list(
-    "CSRF_TRUSTED_ORIGINS",
-    default=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "https://*.azurewebsites.net",
-    ],
-)
-
-# ✅ Auto add Azure hostname to CSRF & CORS
-if AZURE_HOSTNAME:
-    azure_origin = f"https://{AZURE_HOSTNAME}"
-
-    if azure_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(azure_origin)
-        print(f"[settings] Added to CSRF_TRUSTED_ORIGINS: {azure_origin}")
-
-    if azure_origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(azure_origin)
-        print(f"[settings] Added to CORS_ALLOWED_ORIGINS: {azure_origin}")
-
-# ---------------------------------------------------------------------------
+    
+# ─────────────────────────────────────────────────────
 # REST Framework / JWT
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -218,9 +262,9 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Auth
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 AUTH_USER_MODEL = "accounts.User"
 
 AUTHENTICATION_BACKENDS = [
@@ -228,17 +272,17 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Localisation
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Colombo"
 USE_I18N = True
 USE_TZ = True
 
-# ---------------------------------------------------------------------------
-# Static files
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
+# Static Files
+# ─────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -251,28 +295,29 @@ STORAGES = {
     },
 }
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Security
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False  # Azure handles SSL
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Misc
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 FORECAST_MODEL_PATH = os.path.join(
     BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl"
 )
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ---------------------------------------------------------------------------
-# WhatsApp Cloud API
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
+# WhatsApp
+# ─────────────────────────────────────────────────────
 WHATSAPP_ENABLED = env.bool("WHATSAPP_ENABLED", default=False)
 WHATSAPP_API_BASE = env("WHATSAPP_API_BASE", default="https://graph.facebook.com")
 WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", default="v21.0")
@@ -280,17 +325,13 @@ WHATSAPP_PHONE_NUMBER_ID = env("WHATSAPP_PHONE_NUMBER_ID", default="")
 WHATSAPP_ACCESS_TOKEN = env("WHATSAPP_ACCESS_TOKEN", default="")
 WHATSAPP_DEFAULT_COUNTRY_CODE = env("WHATSAPP_DEFAULT_COUNTRY_CODE", default="")
 
-# ---------------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
 # Email
-# ---------------------------------------------------------------------------
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ishiwara.anu31@gmail.com")
-PURCHASE_EMAIL_FROM = env("PURCHASE_EMAIL_FROM", default="ishiwaraanuradha@gmail.com")
+# ─────────────────────────────────────────────────────
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+PURCHASE_EMAIL_FROM = env("PURCHASE_EMAIL_FROM", default="")
 PURCHASE_AUTO_EMAIL_ON_CREATE = env.bool("PURCHASE_AUTO_EMAIL_ON_CREATE", default=True)
-
-EMAIL_BACKEND = env(
-    "EMAIL_BACKEND",
-    default="django.core.mail.backends.smtp.EmailBackend",
-)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=25)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
