@@ -27,7 +27,7 @@ jobs:
 
       # ✅ Step 3: Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: web/frontend
 
       # ✅ Step 4: Build Next.js with env vars injected
