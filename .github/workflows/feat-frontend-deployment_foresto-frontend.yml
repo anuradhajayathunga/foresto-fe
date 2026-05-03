@@ -41,8 +41,9 @@ jobs:
       # ✅ Step 5: Copy assets to standalone
       - name: Copy public and static assets
         run: |
+          mkdir -p web/frontend/.next/standalone/.next
           cp -r web/frontend/public web/frontend/.next/standalone/public
-          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
+          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static || true
 
       # ✅ Step 6: Verify standalone output
       - name: Verify standalone output
@@ -83,8 +84,10 @@ jobs:
         run: |
           echo "====== Downloaded files ======"
           ls -la
-          echo "====== .next folder ======"
-          ls -la .next/
+          echo "====== node-app contents ======"
+          ls -la node-app || true
+          echo "====== node-app .next ======"
+          ls -la node-app/.next || true
 
       # ✅ Step 3: Login to Azure
       - name: Login to Azure
@@ -101,4 +104,4 @@ jobs:
         with:
           app-name: "foresto-frontend"
           slot-name: "Production"
-          package: .
+          package: ./node-app
