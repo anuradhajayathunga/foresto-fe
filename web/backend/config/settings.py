@@ -12,12 +12,31 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
+
+# ---------------------------------------------------------------------------
+# ALLOWED HOSTS
+# ---------------------------------------------------------------------------
 ALLOWED_HOSTS = env.list(
     "ALLOWED_HOSTS",
-    default=["localhost", "127.0.0.1", "[::1]", ".azurewebsites.net"],
+    default=["localhost", "127.0.0.1", "[::1]"],
 )
 
+# ✅ Azure sets WEBSITE_HOSTNAME automatically - no need to hardcode!
+AZURE_HOSTNAME = os.environ.get("WEBSITE_HOSTNAME", "")
+if AZURE_HOSTNAME and AZURE_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(AZURE_HOSTNAME)
 
+# ✅ Wildcard for all azurewebsites.net
+if ".azurewebsites.net" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".azurewebsites.net")
+
+print(f"[settings] ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print(f"[settings] AZURE_HOSTNAME: {AZURE_HOSTNAME}")
+print(f"[settings] DEBUG: {DEBUG}")
+
+# ---------------------------------------------------------------------------
+# Installed Apps
+# ---------------------------------------------------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -43,6 +62,9 @@ INSTALLED_APPS = [
     "kitchen",
 ]
 
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -102,7 +124,6 @@ if database_url:
     _hostname = _parsed.hostname
     _port = _parsed.port or 5432
 
-    # Resolve hostname to IPv4 at startup
     _host_ipv4 = _resolve_ipv4(_hostname, _port)
 
     if _host_ipv4 != _hostname:
@@ -110,10 +131,7 @@ if database_url:
     else:
         print(f"[settings] DB host (unchanged): {_hostname}")
 
-    # Extract query options (e.g. sslmode=require, channel_binding=require)
     _query_options = dict(parse_qsl(_parsed.query))
-
-    # sslmode must go into OPTIONS for psycopg
     _sslmode = _query_options.pop("sslmode", "require")
 
     DATABASES = {
@@ -153,6 +171,7 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
+        "http://127.0.0.1:3001",
     ],
 )
 
@@ -166,6 +185,18 @@ CSRF_TRUSTED_ORIGINS = env.list(
         "https://*.azurewebsites.net",
     ],
 )
+
+# ✅ Auto add Azure hostname to CSRF & CORS
+if AZURE_HOSTNAME:
+    azure_origin = f"https://{AZURE_HOSTNAME}"
+
+    if azure_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(azure_origin)
+        print(f"[settings] Added to CSRF_TRUSTED_ORIGINS: {azure_origin}")
+
+    if azure_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(azure_origin)
+        print(f"[settings] Added to CORS_ALLOWED_ORIGINS: {azure_origin}")
 
 # ---------------------------------------------------------------------------
 # REST Framework / JWT
