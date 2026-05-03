@@ -35,6 +35,12 @@ echo "DEBUG=$DEBUG"
 echo "Checking Django project..."
 python manage.py check --verbosity 2
 
+echo "Running database migrations..."
+python manage.py migrate --no-input
+
+echo "Collecting static files..."
+python manage.py collectstatic --no-input --clear
+
 echo "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \
   --bind=0.0.0.0:${PORT:-8000} \
