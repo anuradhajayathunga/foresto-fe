@@ -3,6 +3,8 @@ import { fetchRestaurants, fetchItems, fetchHolidays, fetchMonthlyPattern, fetch
 import { SimpleBarChart } from '@/components/Charts/Charts'
 import { CalendarDays, Zap, TrendingUp } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 interface RestaurantRow { restaurant: string; location: string; total_revenue: number; total_qty: number; avg_daily_sales: number }
 interface ItemRow { item: string; total_revenue: number; total_qty: number; avg_qty: number }
 interface HolidayRow { holiday_name: string; quantity_sold: number; vs_normal_pct: number }
