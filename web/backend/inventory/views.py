@@ -3,6 +3,8 @@ from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from decimal import Decimal
+
 from core.mixins import RestaurantScopedQuerysetMixin
 from .models import InventoryItem, StockMovement
 from .permissions import IsStaff
@@ -28,6 +30,22 @@ class InventoryItemViewSet(RestaurantScopedQuerysetMixin, viewsets.ModelViewSet)
             current_stock__lte=F("reorder_level"),
         ).order_by("name")
         data = InventoryItemSerializer(qs, many=True).data
+        return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="smart-reorder")
+    def smart_reorder(self, request):
+        qs = self.get_queryset().filter(
+            is_active=True,
+            current_stock__lte=F("reorder_level"),
+        ).order_by("name")
+        data = []
+        for item in qs:
+            suggested = max(Decimal("0.00"), item.reorder_level - item.current_stock + Decimal("10.00"))
+            data.append({
+                "ingredient_name": item.name,
+                "current_stock": item.current_stock,
+                "suggested_reorder_qty": suggested
+            })
         return Response(data)
 
 

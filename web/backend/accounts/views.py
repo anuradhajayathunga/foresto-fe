@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -127,3 +129,29 @@ class TeamUserViewSet(viewsets.ModelViewSet):
         target.is_active = False
         target.save(update_fields=["is_active"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+class CustomTokenSerializer(TokenObtainPairSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Allow logging in with email
+        self.fields[self.username_field] = serializers.CharField(required=False)
+        self.fields["email"] = serializers.EmailField(required=False)
+
+    def validate(self, attrs):
+        # Map email to username for the base class
+        if "email" in attrs and not attrs.get(self.username_field):
+            attrs[self.username_field] = attrs["email"]
+        
+        data = super().validate(attrs)
+        user = self.user
+
+        # Add restaurant info to the token response
+        data['restaurant_id'] = user.restaurant_id
+        data['restaurant_slug'] = user.restaurant.slug if user.restaurant else None
+        data['role'] = user.role
+        return data
+
+class CustomTokenView(TokenObtainPairView):
+    serializer_class = CustomTokenSerializer
