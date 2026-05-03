@@ -38,35 +38,21 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_ML_API_URL: ${{ secrets.NEXT_PUBLIC_ML_API_URL }}
 
-      # ✅ Step 5: Check .next structure and copy assets
-      - name: Check and copy Next.js output
-        run: |
-          echo "====== .next structure after build ======"
-          ls -la web/frontend/.next/ || echo ".next not found"
-          echo "====== .next/static folder ======"
-          ls -la web/frontend/.next/static/ 2>/dev/null || echo ".next/static not found"
-          echo "====== .next/standalone structure ======"
-          ls -la web/frontend/.next/standalone/
-          echo "====== Copying assets to standalone ======"
-          mkdir -p web/frontend/.next/standalone/.next
-          cp -r web/frontend/public web/frontend/.next/standalone/public 2>/dev/null || echo "ℹ️  public already exists or copy skipped"
-          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static 2>/dev/null || echo "ℹ️  static copy skipped (may already exist or not found)"
-
-      # ✅ Step 6: Verify final artifact structure
-      - name: Verify standalone output before upload
+      # ✅ Step 5: Verify standalone output before upload
+      - name: Verify standalone output
         run: |
           echo "====== Standalone Root ======"
           ls -la web/frontend/.next/standalone/
-          echo "====== server.js check ======"
+          echo "====== Checking required files ======"
           test -f web/frontend/.next/standalone/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
-          echo "====== .next subfolder ======"
-          ls -la web/frontend/.next/standalone/.next/ 2>/dev/null || echo ".next subfolder empty or missing"
-          echo "====== static files ======"
-          ls -la web/frontend/.next/standalone/.next/static/ 2>/dev/null || echo "static files not found"
-          echo "====== public files ======"
+          test -f web/frontend/.next/standalone/package.json && echo "✅ package.json EXISTS" || echo "❌ package.json MISSING"
+          test -d web/frontend/.next/standalone/.next && echo "✅ .next folder EXISTS" || echo "❌ .next folder MISSING"
+          echo "====== Contents of .next folder ======"
+          ls -la web/frontend/.next/standalone/.next/
+          echo "====== Contents of public folder ======"
           ls -la web/frontend/.next/standalone/public/ 2>/dev/null || echo "public folder not found"
 
-      # ✅ Step 7: Upload standalone as artifact
+      # ✅ Step 6: Upload standalone as artifact
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -94,10 +80,14 @@ jobs:
         run: |
           echo "====== Deploy folder ======"
           ls -la ./deploy/
-          echo "====== server.js check ======"
+          echo "====== Checking required files ======"
           test -f ./deploy/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
-          echo "====== .next folder ======"
-          ls -la ./deploy/.next/
+          test -f ./deploy/package.json && echo "✅ package.json EXISTS" || echo "❌ package.json MISSING"
+          test -d ./deploy/.next && echo "✅ .next folder EXISTS" || echo "❌ .next folder MISSING"
+          if [ -d ./deploy/.next ]; then
+            echo "====== Contents of .next ======"
+            ls -la ./deploy/.next/
+          fi
 
       # ✅ Step 3: Login to Azure
       - name: Login to Azure
