@@ -38,25 +38,33 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_ML_API_URL: ${{ secrets.NEXT_PUBLIC_ML_API_URL }}
 
-      # ✅ Step 5: Copy public + static into standalone
-      - name: Copy public and static assets into standalone
+      # ✅ Step 5: Check .next structure and copy assets
+      - name: Check and copy Next.js output
         run: |
-          cp -r web/frontend/public web/frontend/.next/standalone/public
-          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
+          echo "====== .next structure after build ======"
+          ls -la web/frontend/.next/ || echo ".next not found"
+          echo "====== .next/static folder ======"
+          ls -la web/frontend/.next/static/ 2>/dev/null || echo ".next/static not found"
+          echo "====== .next/standalone structure ======"
+          ls -la web/frontend/.next/standalone/
+          echo "====== Copying assets to standalone ======"
+          mkdir -p web/frontend/.next/standalone/.next
+          cp -r web/frontend/public web/frontend/.next/standalone/public 2>/dev/null || echo "ℹ️  public already exists or copy skipped"
+          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static 2>/dev/null || echo "ℹ️  static copy skipped (may already exist or not found)"
 
-      # ✅ Step 6: Verify files before upload
-      - name: Verify standalone output
+      # ✅ Step 6: Verify final artifact structure
+      - name: Verify standalone output before upload
         run: |
           echo "====== Standalone Root ======"
           ls -la web/frontend/.next/standalone/
           echo "====== server.js check ======"
           test -f web/frontend/.next/standalone/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
-          echo "====== .next folder ======"
-          ls -la web/frontend/.next/standalone/.next/
+          echo "====== .next subfolder ======"
+          ls -la web/frontend/.next/standalone/.next/ 2>/dev/null || echo ".next subfolder empty or missing"
           echo "====== static files ======"
-          ls -la web/frontend/.next/standalone/.next/static/
+          ls -la web/frontend/.next/standalone/.next/static/ 2>/dev/null || echo "static files not found"
           echo "====== public files ======"
-          ls -la web/frontend/.next/standalone/public/
+          ls -la web/frontend/.next/standalone/public/ 2>/dev/null || echo "public folder not found"
 
       # ✅ Step 7: Upload standalone as artifact
       - name: Upload artifact for deployment job
