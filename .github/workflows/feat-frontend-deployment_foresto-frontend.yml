@@ -1,4 +1,4 @@
-name: Build and deploy Node.js app to Azure Web App - foresto-frontend
+name: Build and deploy Next.js app to Azure Web App - foresto-frontend
 
 on:
   push:
@@ -13,24 +13,20 @@ jobs:
       contents: read
 
     steps:
-      # ✅ Step 1: Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ Step 2: Setup Node
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: "20.x"
           cache: "npm"
           cache-dependency-path: web/frontend/package-lock.json
 
-      # ✅ Step 3: Install all dependencies
       - name: Install dependencies
         run: npm ci
         working-directory: web/frontend
 
-      # ✅ Step 4: Build with env vars injected
       - name: Build Next.js app
         run: npm run build
         working-directory: web/frontend
@@ -38,22 +34,33 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_ML_API_URL: ${{ secrets.NEXT_PUBLIC_ML_API_URL }}
 
-      # ✅ Step 5: Verify standalone output before upload
-      - name: Verify standalone output
+      - name: Fix Next.js standalone structure
         run: |
-          echo "====== Standalone Root ======"
-          ls -la web/frontend/.next/standalone/
-          echo "====== Checking required files ======"
-          test -f web/frontend/.next/standalone/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
-          test -f web/frontend/.next/standalone/package.json && echo "✅ package.json EXISTS" || echo "❌ package.json MISSING"
-          test -d web/frontend/.next/standalone/.next && echo "✅ .next folder EXISTS" || echo "❌ .next folder MISSING"
-          echo "====== Contents of .next folder ======"
-          ls -la web/frontend/.next/standalone/.next/
-          echo "====== Contents of public folder ======"
-          ls -la web/frontend/.next/standalone/public/ 2>/dev/null || echo "public folder not found"
+          echo "Copying public folder..."
+          cp -r web/frontend/public web/frontend/.next/standalone/public || true
 
-      # ✅ Step 6: Upload standalone as artifact
-      - name: Upload artifact for deployment job
+          echo "Copying static folder..."
+          mkdir -p web/frontend/.next/standalone/.next
+          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
+
+      - name: Verify final standalone package
+        run: |
+          echo "====== Standalone Folder ======"
+          ls -la web/frontend/.next/standalone
+
+          echo "====== Check server.js ======"
+          test -f web/frontend/.next/standalone/server.js && echo "server.js exists"
+
+          echo "====== Check package.json ======"
+          test -f web/frontend/.next/standalone/package.json && echo "package.json exists"
+
+          echo "====== Check public ======"
+          test -d web/frontend/.next/standalone/public && echo "public exists"
+
+          echo "====== Check .next/static ======"
+          test -d web/frontend/.next/standalone/.next/static && echo ".next/static exists"
+
+      - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: node-app
@@ -68,28 +75,23 @@ jobs:
       contents: read
 
     steps:
-      # ✅ Step 1: Download artifact
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
           path: ./deploy
 
-      # ✅ Step 2: Verify downloaded files
-      - name: Verify downloaded files
+      - name: Verify downloaded artifact
         run: |
-          echo "====== Deploy folder ======"
-          ls -la ./deploy/
-          echo "====== Checking required files ======"
-          test -f ./deploy/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
-          test -f ./deploy/package.json && echo "✅ package.json EXISTS" || echo "❌ package.json MISSING"
-          test -d ./deploy/.next && echo "✅ .next folder EXISTS" || echo "❌ .next folder MISSING"
-          if [ -d ./deploy/.next ]; then
-            echo "====== Contents of .next ======"
-            ls -la ./deploy/.next/
-          fi
+          echo "====== Deploy Folder ======"
+          ls -la ./deploy
 
-      # ✅ Step 3: Login to Azure
+          echo "====== Check required files ======"
+          test -f ./deploy/server.js && echo "server.js exists"
+          test -f ./deploy/package.json && echo "package.json exists"
+          test -d ./deploy/public && echo "public exists"
+          test -d ./deploy/.next/static && echo ".next/static exists"
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -97,9 +99,7 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_14588C9815304B2DAB31C3D54442E4ED }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8EE9A7B8AC3E4CB38D75B298EE4BEF31 }}
 
-      # ✅ Step 4: Deploy standalone folder
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: "foresto-frontend"
