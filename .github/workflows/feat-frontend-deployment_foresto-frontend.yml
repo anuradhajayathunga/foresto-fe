@@ -39,32 +39,38 @@ jobs:
           echo "Copying public folder..."
           cp -r web/frontend/public web/frontend/.next/standalone/public || true
 
-          echo "Copying static folder..."
+          echo "Creating .next folder..."
           mkdir -p web/frontend/.next/standalone/.next
+
+          echo "Copying static folder..."
           cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
+
+          echo "Final standalone structure:"
+          ls -la web/frontend/.next/standalone
+          ls -la web/frontend/.next/standalone/.next
 
       - name: Verify final standalone package
         run: |
-          echo "====== Standalone Folder ======"
-          ls -la web/frontend/.next/standalone
+          echo "Checking server.js..."
+          test -f web/frontend/.next/standalone/server.js
 
-          echo "====== Check server.js ======"
-          test -f web/frontend/.next/standalone/server.js && echo "server.js exists"
+          echo "Checking package.json..."
+          test -f web/frontend/.next/standalone/package.json
 
-          echo "====== Check package.json ======"
-          test -f web/frontend/.next/standalone/package.json && echo "package.json exists"
+          echo "Checking public..."
+          test -d web/frontend/.next/standalone/public
 
-          echo "====== Check public ======"
-          test -d web/frontend/.next/standalone/public && echo "public exists"
+          echo "Checking .next/static..."
+          test -d web/frontend/.next/standalone/.next/static
 
-          echo "====== Check .next/static ======"
-          test -d web/frontend/.next/standalone/.next/static && echo ".next/static exists"
+          echo "All required files exist."
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: web/frontend/.next/standalone
+          path: web/frontend/.next/standalone/
+          include-hidden-files: true
           if-no-files-found: error
 
   deploy:
@@ -86,11 +92,16 @@ jobs:
           echo "====== Deploy Folder ======"
           ls -la ./deploy
 
+          echo "====== Hidden .next Folder ======"
+          ls -la ./deploy/.next
+
           echo "====== Check required files ======"
-          test -f ./deploy/server.js && echo "server.js exists"
-          test -f ./deploy/package.json && echo "package.json exists"
-          test -d ./deploy/public && echo "public exists"
-          test -d ./deploy/.next/static && echo ".next/static exists"
+          test -f ./deploy/server.js
+          test -f ./deploy/package.json
+          test -d ./deploy/public
+          test -d ./deploy/.next/static
+
+          echo "Deployment package is correct."
 
       - name: Login to Azure
         uses: azure/login@v2
