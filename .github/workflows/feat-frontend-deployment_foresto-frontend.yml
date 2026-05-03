@@ -25,12 +25,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/frontend/package-lock.json
 
-      # ✅ Step 3: Install
+      # ✅ Step 3: Install all dependencies
       - name: Install dependencies
         run: npm ci
         working-directory: web/frontend
 
-      # ✅ Step 4: Build with env vars
+      # ✅ Step 4: Build with env vars injected
       - name: Build Next.js app
         run: npm run build
         working-directory: web/frontend
@@ -38,26 +38,27 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_ML_API_URL: ${{ secrets.NEXT_PUBLIC_ML_API_URL }}
 
-      # ✅ Step 5: Copy assets to standalone
-      - name: Copy public and static assets
+      # ✅ Step 5: Copy public + static into standalone
+      - name: Copy public and static assets into standalone
         run: |
-          mkdir -p web/frontend/.next/standalone/.next
           cp -r web/frontend/public web/frontend/.next/standalone/public
-          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static || true
+          cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
 
-      # ✅ Step 6: Verify standalone output
+      # ✅ Step 6: Verify files before upload
       - name: Verify standalone output
         run: |
           echo "====== Standalone Root ======"
           ls -la web/frontend/.next/standalone/
-          echo "====== Standalone .next ======"
+          echo "====== server.js check ======"
+          test -f web/frontend/.next/standalone/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
+          echo "====== .next folder ======"
           ls -la web/frontend/.next/standalone/.next/
-          echo "====== Static files ======"
+          echo "====== static files ======"
           ls -la web/frontend/.next/standalone/.next/static/
-          echo "====== Public files ======"
+          echo "====== public files ======"
           ls -la web/frontend/.next/standalone/public/
 
-      # ✅ Step 7: Upload artifact
+      # ✅ Step 7: Upload standalone as artifact
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -78,17 +79,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-          path: node-app
+          path: ./deploy
 
       # ✅ Step 2: Verify downloaded files
       - name: Verify downloaded files
         run: |
-          echo "====== Downloaded files ======"
-          ls -la
-          echo "====== node-app contents ======"
-          ls -la node-app || true
-          echo "====== node-app .next ======"
-          ls -la node-app/.next || true
+          echo "====== Deploy folder ======"
+          ls -la ./deploy/
+          echo "====== server.js check ======"
+          test -f ./deploy/server.js && echo "✅ server.js EXISTS" || echo "❌ server.js MISSING"
+          echo "====== .next folder ======"
+          ls -la ./deploy/.next/
 
       # ✅ Step 3: Login to Azure
       - name: Login to Azure
@@ -98,11 +99,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_14588C9815304B2DAB31C3D54442E4ED }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8EE9A7B8AC3E4CB38D75B298EE4BEF31 }}
 
-      # ✅ Step 4: Deploy
+      # ✅ Step 4: Deploy standalone folder
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: "foresto-frontend"
           slot-name: "Production"
-          package: node-app
+          package: ./deploy
