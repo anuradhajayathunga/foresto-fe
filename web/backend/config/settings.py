@@ -10,38 +10,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DEBUG=(bool, False))
 
 # ─────────────────────────────────────────────────────
-# ✅ Load .env ONLY for local development
+# Load .env ONLY for local development
 # Azure uses Configuration → Application Settings
 # ─────────────────────────────────────────────────────
 dotenv_path = os.path.join(BASE_DIR, ".env")
 if os.path.exists(dotenv_path):
-    print("[settings] ✅ Local: Loading .env file")
     environ.Env.read_env(dotenv_path)
-else:
-    print("[settings] ✅ Azure: Using Application Settings env vars")
 
 # ─────────────────────────────────────────────────────
-# Core Settings
+# Core Settings (read AFTER .env is loaded)
 # ─────────────────────────────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 
+if DEBUG:
+    print("[settings] ✅ Local: .env loaded and DEBUG mode enabled")
+
 # ✅ Azure automatically provides WEBSITE_HOSTNAME
 AZURE_HOSTNAME = os.environ.get("WEBSITE_HOSTNAME", "")
 
-print(f"[settings] AZURE_HOSTNAME  : '{AZURE_HOSTNAME}'")
-print(f"[settings] DEBUG           : {DEBUG}")
-print(f"[settings] BASE_DIR        : {BASE_DIR}")
-print(f"[settings] .env exists     : {os.path.exists(dotenv_path)}")
+# Only log detailed settings in DEBUG mode to reduce startup spam
+if DEBUG:
+    print(f"[settings] DEBUG           : {DEBUG}")
+    print(f"[settings] AZURE_HOSTNAME  : '{AZURE_HOSTNAME}'")
 
-# Ensure SSL cert bundle is available for TLS connections (macOS/local dev)
+# Ensure SSL cert bundle is available for TLS connections (macOS/local dev/Azure)
 # If the environment hasn't provided SSL_CERT_FILE, prefer certifi when installed.
-if not os.environ.get("SSL_CERT_FILE"):
+if not os.environ.get("SSL_CERT_FILE") and not (AZURE_HOSTNAME or not DEBUG):
     try:
         import certifi
 
         os.environ["SSL_CERT_FILE"] = certifi.where()
-        print(f"[settings] SSL_CERT_FILE set to certifi bundle: {os.environ['SSL_CERT_FILE']}")
     except Exception:
         pass
 
@@ -61,7 +60,7 @@ if AZURE_HOSTNAME and AZURE_HOSTNAME not in ALLOWED_HOSTS:
 if ".azurewebsites.net" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(".azurewebsites.net")
 
-print(f"[settings] ALLOWED_HOSTS   : {ALLOWED_HOSTS}")
+
 
 # ─────────────────────────────────────────────────────
 # CORS
@@ -100,8 +99,7 @@ if AZURE_HOSTNAME:
     if azure_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(azure_origin)
 
-print(f"[settings] CSRF_ORIGINS    : {CSRF_TRUSTED_ORIGINS}")
-print(f"[settings] CORS_ORIGINS    : {CORS_ALLOWED_ORIGINS}")
+
 
 # ─────────────────────────────────────────────────────
 # Installed Apps
@@ -164,46 +162,49 @@ WSGI_APPLICATION = "config.wsgi.application"
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-def _resolve_ipv4(hostname, port):
-    """Force IPv4 - Azure App Service has no IPv6 outbound"""
-
+def _resolve_ipv4(hostname, port, timeout_sec=5):
+    """
+    Attempt IPv4 resolution with timeout - Azure App Service has no IPv6 outbound.
+    Falls back to hostname if resolution fails or times out (avoids blocking startup).
+    """
     if ":" in str(hostname):
-        print(f"[settings] ❌ IPv6 detected: {hostname}")
         return hostname
 
     try:
+        # Set socket timeout to prevent blocking during slow DNS lookups
+        socket.setdefaulttimeout(timeout_sec)
         results = socket.getaddrinfo(
             hostname,
             port,
             socket.AF_INET,
             socket.SOCK_STREAM,
         )
+        socket.setdefaulttimeout(None)  # Reset to default
+        
         if results:
             ipv4 = results[0][4][0]
-            print(f"[settings] ✅ DB resolved: {hostname} → {ipv4}")
             return ipv4
         return hostname
 
-    except socket.gaierror as e:
-        print(f"[settings] ❌ DNS error: {e}")
+    except (socket.gaierror, socket.timeout) as e:
+        # DNS timeout or resolution failure - use hostname directly
+        # The database driver will handle hostname resolution
+        socket.setdefaulttimeout(None)  # Reset to default
         return hostname
     except Exception as e:
-        print(f"[settings] ❌ Error: {e}")
+        socket.setdefaulttimeout(None)  # Reset to default
         return hostname
 
 
 database_url = env("DATABASE_URL", default="")
-print(f"[settings] DATABASE_URL set: {bool(database_url)}")
 
 if database_url:
     _parsed = urlparse(database_url)
     _hostname = _parsed.hostname or ""
     _port = _parsed.port or 5432
 
-    print(f"[settings] DB hostname: {_hostname}")
-    print(f"[settings] DB port    : {_port}")
-
-    _host_ipv4 = _resolve_ipv4(_hostname, _port)
+    # Attempt IPv4 resolution with 3-second timeout to avoid slow startup
+    _host_ipv4 = _resolve_ipv4(_hostname, _port, timeout_sec=3)
 
     _query_options = dict(parse_qsl(_parsed.query))
 
