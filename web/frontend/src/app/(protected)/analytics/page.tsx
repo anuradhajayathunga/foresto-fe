@@ -1,271 +1,398 @@
-import { Suspense } from 'react'
-import { fetchRestaurants, fetchItems, fetchHolidays, fetchMonthlyPattern, fetchCalendar } from '@/lib/api'
-import { SimpleBarChart } from '@/components/Charts/Charts'
-import { CalendarDays, Zap, TrendingUp } from 'lucide-react'
+"use client";
 
-interface RestaurantRow { restaurant: string; location: string; total_revenue: number; total_qty: number; avg_daily_sales: number }
-interface ItemRow { item: string; total_revenue: number; total_qty: number; avg_qty: number }
-interface HolidayRow { holiday_name: string; quantity_sold: number; vs_normal_pct: number }
-interface MonthRow { month: number; month_name: string; quantity_sold: number }
-interface CalendarEvent { date: string; event_name: string; multiplier: number; impact_level: string }
+import { useState, useEffect } from "react";
+import { Download, Trash2, Filter, X, History, ChefHat } from "lucide-react";
 
-const IMPACT_COLORS: Record<string, string> = {
-  High:   'bg-red-100 text-red-600',
-  Medium: 'bg-orange-100 text-orange-600',
-  Low:    'bg-green-100 text-green-600',
+const ALL_ITEMS = [
+  "All Items",
+  "Rice & Curry",
+  "Devilled Chicken",
+  "Kottu",
+  "String Hoppers",
+  "Hoppers",
+  "Fish Curry",
+  "Fried Rice",
+  "Lamprais",
+  "Egg Roti",
+  "Roti",
+  "Noodles",
+  "Pittu",
+  "Short Eats",
+  "Juice",
+  "Tea / Coffee",
+];
+const ALL_LOCATIONS = ["All Locations", "Colombo", "Kandy", "Galle", "Negombo"];
+
+interface SavedEntry {
+  id: string;
+  savedAt: string;
+  date: string;
+  item: string;
+  location: string;
+  rainfall_mm: number;
+  temperature: number;
+  holiday_name: string;
+  ml_prediction: number;
+  rule_factor: number;
+  final_forecast: number;
+  rules_applied: { rule: string; factor: number }[];
 }
 
-async function AnalyticsContent() {
-  const [restData, itemData, holidayData, monthlyData, calendarData] = await Promise.all([
-    fetchRestaurants().catch(() => ({ restaurants: [] })),
-    fetchItems().catch(() => ({ items: [] })),
-    fetchHolidays().catch(() => ({ normal_day_avg: 0, holidays: [] })),
-    fetchMonthlyPattern().catch(() => ({ monthly_pattern: [] })),
-    fetchCalendar().catch(() => ({ holidays: [] })),
-  ])
+export default function PastPredictionsPage() {
+  const [predictions, setPredictions] = useState<SavedEntry[]>([]);
+  const [filters, setFilters] = useState({
+    item: "All Items",
+    location: "All Locations",
+    holiday: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
-  const restaurants: RestaurantRow[] = restData?.restaurants ?? []
-  const items: ItemRow[] = (itemData?.items ?? []).slice(0, 15)
-  const holidays: HolidayRow[] = holidayData?.holidays ?? []
-  const monthly: MonthRow[] = monthlyData?.monthly_pattern ?? []
-  const calendarEvents: CalendarEvent[] = (calendarData?.holidays ?? []).sort(
-    (a: CalendarEvent, b: CalendarEvent) => a.date.localeCompare(b.date)
-  )
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("foresto_predictions");
+      if (raw) setPredictions(JSON.parse(raw) as SavedEntry[]);
+    } catch {
+      /* empty storage */
+    }
+  }, []);
 
-  const monthChart = monthly.map((m: MonthRow) => ({
-    month: m.month_name,
-    avg: Number(m.quantity_sold).toFixed(1),
-  }))
+  function setFilter(key: string, value: string) {
+    setFilters((f) => ({ ...f, [key]: value }));
+  }
 
-  const holidayChart = holidays.slice(0, 10).map((h: HolidayRow) => ({
-    name: h.holiday_name.length > 16 ? h.holiday_name.slice(0, 14) + '…' : h.holiday_name,
-    boost: Number(h.vs_normal_pct).toFixed(1),
-  }))
+  function clearFilters() {
+    setFilters({
+      item: "All Items",
+      location: "All Locations",
+      holiday: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+  }
+
+  function deleteOne(id: string) {
+    const updated = predictions.filter((p) => p.id !== id);
+    setPredictions(updated);
+    localStorage.setItem("foresto_predictions", JSON.stringify(updated));
+  }
+
+  function clearAll() {
+    if (!confirm("Delete all saved predictions? This cannot be undone."))
+      return;
+    setPredictions([]);
+    localStorage.removeItem("foresto_predictions");
+  }
+
+  const filtered = predictions.filter((p) => {
+    if (filters.item !== "All Items" && p.item !== filters.item) return false;
+    if (filters.location !== "All Locations" && p.location !== filters.location)
+      return false;
+    if (
+      filters.holiday &&
+      !p.holiday_name.toLowerCase().includes(filters.holiday.toLowerCase())
+    )
+      return false;
+    if (filters.dateFrom && p.date < filters.dateFrom) return false;
+    if (filters.dateTo && p.date > filters.dateTo) return false;
+    return true;
+  });
+
+  function printSingle(p: SavedEntry) {
+    const w = window.open("", "_blank");
+    if (!w) return;
+
+    const html = `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Prediction ${p.date}</title>
+          <style>
+            body{font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#111; background:white; padding:24px}
+            .header{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+            .title{font-weight:700;font-size:18px}
+            .muted{color:#6b7280;font-size:12px}
+            .card{border:1px solid #eee;padding:16px;border-radius:8px}
+            .row{display:flex;justify-content:space-between;padding:6px 0}
+            .label{color:#6b7280;font-size:12px}
+            .value{font-weight:600}
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="width:40px;height:40px;background:#fb923c;border-radius:8px"></div>
+            <div>
+              <div class="title">Foresto — Prediction</div>
+              <div class="muted">Exported ${new Date().toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row"><div class="label">Forecast Date</div><div class="value">${p.date}</div></div>
+            <div class="row"><div class="label">Item</div><div class="value">${p.item}</div></div>
+            <div class="row"><div class="label">Location</div><div class="value">${p.location}</div></div>
+            <div class="row"><div class="label">Event</div><div class="value">${p.holiday_name}</div></div>
+            <div class="row"><div class="label">Temp °C</div><div class="value">${p.temperature}</div></div>
+            <div class="row"><div class="label">Rain mm</div><div class="value">${p.rainfall_mm}</div></div>
+            <div class="row"><div class="label">ML Pred.</div><div class="value">${Number(p.ml_prediction).toFixed(1)}</div></div>
+            <div class="row"><div class="label">Rule ×</div><div class="value">×${Number(p.rule_factor).toFixed(2)}</div></div>
+            <div class="row"><div class="label">Final Forecast</div><div class="value">${Math.round(p.final_forecast)} units</div></div>
+            <div class="row"><div class="label">Saved At</div><div class="value">${new Date(p.savedAt).toLocaleString()}</div></div>
+          </div>
+        </body>
+      </html>`;
+
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+    setTimeout(() => w.close(), 500);
+  }
+
+  function downloadPDF() {
+    window.print();
+  }
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          In-depth breakdown by restaurant, item, holiday, and season
-        </p>
-      </div>
+    <>
+      {/* Print-only styles */}
+      <style>{`
+        @media print {
+          aside, .no-print { display: none !important; }
+          main { margin-left: 0 !important; padding: 0 !important; }
+          body { background: white !important; }
+          #print-area { padding: 24px; }
+          #print-header { display: flex !important; }
+          .print-row:hover { background: transparent !important; }
+        }
+        @media screen {
+          #print-header { display: none; }
+        }
+      `}</style>
 
-      {/* Restaurants Table */}
-      <div className="section-card">
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">Performance by Restaurant</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-100">
-                {['Restaurant','Location','Total Revenue (LKR)','Total Qty Sold','Avg Daily Sales'].map(h => (
-                  <th key={h} className="text-left text-gray-400 font-medium pb-3 pr-6 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {restaurants.map((r: RestaurantRow, i: number) => (
-                <tr key={i} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
-                  <td className="py-3 pr-6 font-semibold text-gray-800">{r.restaurant}</td>
-                  <td className="py-3 pr-6 text-gray-500">{r.location}</td>
-                  <td className="py-3 pr-6 text-orange-600 font-medium">
-                    {Number(r.total_revenue).toLocaleString('en-LK', { maximumFractionDigits: 0 })}
-                  </td>
-                  <td className="py-3 pr-6 text-gray-700">{Number(r.total_qty).toLocaleString()}</td>
-                  <td className="py-3 pr-6 text-gray-700">{Number(r.avg_daily_sales).toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Monthly Pattern + Holiday Impact side by side */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="section-card">
-          <h2 className="text-sm font-semibold text-gray-800 mb-1">Monthly Sales Pattern</h2>
-          <p className="text-xs text-gray-400 mb-4">Average units sold per month</p>
-          {monthChart.length > 0 ? (
-            <SimpleBarChart
-              data={monthChart}
-              xKey="month"
-              bars={[{ key: 'avg', color: '#f97316', label: 'Avg Qty' }]}
-              height={240}
-            />
-          ) : (
-            <div className="h-56 flex items-center justify-center text-gray-400 text-sm">No data</div>
-          )}
-        </div>
-
-        <div className="section-card">
-          <h2 className="text-sm font-semibold text-gray-800 mb-1">Holiday Sales Boost</h2>
-          <p className="text-xs text-gray-400 mb-4">% increase vs normal days · Normal avg: {holidayData?.normal_day_avg ?? '—'}</p>
-          {holidayChart.length > 0 ? (
-            <SimpleBarChart
-              data={holidayChart}
-              xKey="name"
-              bars={[{ key: 'boost', color: '#fb923c', label: '% Boost' }]}
-              height={240}
-            />
-          ) : (
-            <div className="h-56 flex items-center justify-center text-gray-400 text-sm">No data</div>
-          )}
-        </div>
-      </div>
-
-      {/* Top Items Table */}
-      <div className="section-card">
-        <h2 className="text-sm font-semibold text-gray-800 mb-4">Top Menu Items by Revenue</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-100">
-                {['#','Item','Total Revenue (LKR)','Total Qty','Avg Qty/Day'].map(h => (
-                  <th key={h} className="text-left text-gray-400 font-medium pb-3 pr-6 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item: ItemRow, i: number) => (
-                <tr key={i} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
-                  <td className="py-3 pr-6 text-gray-400 font-medium">{i + 1}</td>
-                  <td className="py-3 pr-6 font-semibold text-gray-800">{item.item}</td>
-                  <td className="py-3 pr-6 text-orange-600 font-medium">
-                    {Number(item.total_revenue).toLocaleString('en-LK', { maximumFractionDigits: 0 })}
-                  </td>
-                  <td className="py-3 pr-6 text-gray-700">{Number(item.total_qty).toLocaleString()}</td>
-                  <td className="py-3 pr-6 text-gray-700">{Number(item.avg_qty).toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Holiday Impact Detail */}
-      {holidays.length > 0 && (
-        <div className="section-card">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">Holiday Impact Detail</h2>
-          <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {holidays.map((h: HolidayRow, i: number) => (
-              <div key={i} className="rounded-xl border border-gray-100 p-3 hover:border-orange-200 transition-colors">
-                <p className="text-xs font-semibold text-gray-700 leading-tight">{h.holiday_name}</p>
-                <p className="text-lg font-bold text-orange-500 mt-1">{Number(h.quantity_sold).toFixed(1)}</p>
-                <p className="text-[10px] text-gray-400">avg units &nbsp;
-                  <span className={h.vs_normal_pct >= 0 ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
-                    {h.vs_normal_pct >= 0 ? '+' : ''}{Number(h.vs_normal_pct).toFixed(1)}%
-                  </span>
-                </p>
-              </div>
-            ))}
+      <div className="p-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between no-print">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Past Predictions
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              View, filter and export your saved demand forecasts
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={downloadPDF}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download size={14} />
+              Download PDF
+            </button>
+            <button
+              onClick={clearAll}
+              disabled={predictions.length === 0}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={14} />
+              Clear All
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Cultural Events Calendar */}
-      {calendarEvents.length > 0 && (
-        <div className="section-card">
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center flex-shrink-0">
-              <CalendarDays size={14} className="text-white" />
+        {/* Filters */}
+        <div className="section-card no-print">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter size={14} className="text-gray-500" />
+            <p className="text-sm font-semibold text-gray-700">
+              Filter Results
+            </p>
+            <button
+              onClick={clearFilters}
+              className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
+            >
+              <X size={11} /> Clear filters
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <select
+              value={filters.item}
+              onChange={(e) => setFilter("item", e.target.value)}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-orange-400 transition"
+            >
+              {ALL_ITEMS.map((i) => (
+                <option key={i}>{i}</option>
+              ))}
+            </select>
+            <select
+              value={filters.location}
+              onChange={(e) => setFilter("location", e.target.value)}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-orange-400 transition"
+            >
+              {ALL_LOCATIONS.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Event / Holiday..."
+              value={filters.holiday}
+              onChange={(e) => setFilter("holiday", e.target.value)}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 transition"
+            />
+            <div>
+              <label className="block text-[10px] text-gray-400 mb-1 ml-1">
+                Date from
+              </label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilter("dateFrom", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 transition"
+              />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-gray-800">Sri Lankan Cultural Events Calendar</h2>
-              <p className="text-xs text-gray-400">Demand multipliers applied by the rule engine on event days</p>
+              <label className="block text-[10px] text-gray-400 mb-1 ml-1">
+                Date to
+              </label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilter("dateTo", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 transition"
+              />
             </div>
           </div>
+        </div>
 
-          {/* Summary KPIs */}
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="rounded-xl bg-orange-50 border border-orange-100 p-3 text-center">
-              <p className="text-2xl font-bold text-orange-500">
-                {Array.from(new Set(calendarEvents.map(e => e.event_name))).length}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Unique Events</p>
-            </div>
-            <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-center">
-              <p className="text-2xl font-bold text-red-500">
-                {calendarEvents.filter(e => e.impact_level === 'High').length}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">High Impact Days</p>
-            </div>
-            <div className="rounded-xl bg-green-50 border border-green-100 p-3 text-center">
-              <p className="text-2xl font-bold text-green-600">
-                ×{Math.max(...calendarEvents.map(e => e.multiplier)).toFixed(1)}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Peak Multiplier</p>
-            </div>
+        {/* Print header (visible only when printing) */}
+        <div
+          id="print-header"
+          className="items-center gap-3 mb-6 pb-4 border-b border-gray-200"
+        >
+          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
+            <ChefHat size={16} className="text-white" />
           </div>
+          <div>
+            <p className="font-bold text-gray-900">
+              Foresto — Past Predictions
+            </p>
+            <p className="text-xs text-gray-500">
+              Exported {new Date().toLocaleString()}
+            </p>
+          </div>
+        </div>
 
-          {/* Events Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {['Date', 'Event', 'Impact Level', 'Demand Multiplier', 'Expected Effect'].map(h => (
-                    <th key={h} className="text-left text-gray-400 font-medium pb-3 pr-6 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {calendarEvents.map((ev: CalendarEvent, i: number) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-orange-50 transition-colors">
-                    <td className="py-3 pr-6 text-gray-500 whitespace-nowrap">{ev.date}</td>
-                    <td className="py-3 pr-6 font-semibold text-gray-800 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <CalendarDays size={12} className="text-orange-400 flex-shrink-0" />
-                        {ev.event_name}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-6">
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                        IMPACT_COLORS[ev.impact_level] ?? 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {ev.impact_level === 'High' && <Zap size={10} />}
-                        {ev.impact_level === 'Medium' && <TrendingUp size={10} />}
-                        {ev.impact_level}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-6">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full max-w-[80px]">
-                          <div
-                            className="h-1.5 bg-orange-400 rounded-full"
-                            style={{ width: `${Math.min(((ev.multiplier - 1) / 1.5) * 100, 100)}%` }}
-                          />
-                        </div>
-                        <span className="font-bold text-orange-600">×{ev.multiplier.toFixed(1)}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 pr-6 text-gray-500">
-                      +{((ev.multiplier - 1) * 100).toFixed(0)}% vs normal
-                    </td>
+        {/* Table */}
+        <div id="print-area">
+          <p className="text-sm text-gray-500 mb-3 no-print">
+            {filtered.length} prediction{filtered.length !== 1 ? "s" : ""}
+            {predictions.length !== filtered.length &&
+              ` (filtered from ${predictions.length})`}
+          </p>
+
+          {filtered.length === 0 ? (
+            <div className="section-card h-56 flex flex-col items-center justify-center gap-3 no-print">
+              <History size={36} className="text-gray-200" />
+              <p className="text-sm text-gray-400 text-center">
+                {predictions.length === 0
+                  ? "No saved predictions yet.\nRun a forecast on the Predict page and click Save Prediction."
+                  : "No predictions match the current filters."}
+              </p>
+            </div>
+          ) : (
+            <div className="section-card p-0 overflow-x-auto">
+              <table className="w-full text-sm min-w-[900px]">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    {[
+                      "Forecast Date",
+                      "Item",
+                      "Location",
+                      "Event",
+                      "Temp °C",
+                      "Rain mm",
+                      "ML Pred.",
+                      "Rule ×",
+                      "Final Forecast",
+                      "Saved At",
+                      "",
+                    ].map((h, i) => (
+                      <th
+                        key={i}
+                        className={`text-left px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap ${i === 10 ? "no-print" : ""}`}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((p) => (
+                    <tr
+                      key={p.id}
+                      className="print-row hover:bg-orange-50/40 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                        {p.date}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{p.item}</td>
+                      <td className="px-4 py-3 text-gray-700">{p.location}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {p.holiday_name === "None" ? (
+                          <span className="text-gray-300">—</span>
+                        ) : (
+                          p.holiday_name
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {p.temperature}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {p.rainfall_mm}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {Number(p.ml_prediction).toFixed(1)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        ×{Number(p.rule_factor).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-orange-600 text-base">
+                          {Math.round(p.final_forecast)}
+                        </span>
+                        <span className="text-xs text-gray-400 ml-1">
+                          units
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                        {new Date(p.savedAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 no-print flex items-center gap-2">
+                        <button
+                          onClick={() => printSingle(p)}
+                          title="Download this prediction as PDF"
+                          className="text-blue-500 hover:text-blue-700 transition"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
+                          onClick={() => deleteOne(p.id)}
+                          title="Delete this prediction"
+                          className="text-gray-300 hover:text-red-500 transition"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  )
-}
-
-export default function AnalyticsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="p-8 space-y-6 animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-40" />
-          <div className="h-64 bg-gray-200 rounded-2xl" />
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-64 bg-gray-200 rounded-2xl" />
-            <div className="h-64 bg-gray-200 rounded-2xl" />
-          </div>
-        </div>
-      }
-    >
-      <AnalyticsContent />
-    </Suspense>
-  )
+      </div>
+    </>
+  );
 }
