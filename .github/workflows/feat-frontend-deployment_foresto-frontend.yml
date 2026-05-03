@@ -13,11 +13,11 @@ jobs:
       contents: read
 
     steps:
-      # ✅ Step 1: Checkout code
+      # ✅ Step 1: Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ Step 2: Setup Node.js
+      # ✅ Step 2: Setup Node
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
@@ -25,12 +25,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/frontend/package-lock.json
 
-      # ✅ Step 3: Install dependencies
+      # ✅ Step 3: Install
       - name: Install dependencies
         run: npm ci
         working-directory: web/frontend
 
-      # ✅ Step 4: Build Next.js with env vars injected
+      # ✅ Step 4: Build with env vars
       - name: Build Next.js app
         run: npm run build
         working-directory: web/frontend
@@ -38,13 +38,25 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_ML_API_URL: ${{ secrets.NEXT_PUBLIC_ML_API_URL }}
 
-      # ✅ Step 5: Copy public and static into standalone
-      - name: Copy public and static assets into standalone
+      # ✅ Step 5: Copy assets to standalone
+      - name: Copy public and static assets
         run: |
           cp -r web/frontend/public web/frontend/.next/standalone/public
           cp -r web/frontend/.next/static web/frontend/.next/standalone/.next/static
 
-      # ✅ Step 6: Upload standalone folder as artifact
+      # ✅ Step 6: Verify standalone output
+      - name: Verify standalone output
+        run: |
+          echo "====== Standalone Root ======"
+          ls -la web/frontend/.next/standalone/
+          echo "====== Standalone .next ======"
+          ls -la web/frontend/.next/standalone/.next/
+          echo "====== Static files ======"
+          ls -la web/frontend/.next/standalone/.next/static/
+          echo "====== Public files ======"
+          ls -la web/frontend/.next/standalone/public/
+
+      # ✅ Step 7: Upload artifact
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -66,7 +78,15 @@ jobs:
         with:
           name: node-app
 
-      # ✅ Step 2: Login to Azure
+      # ✅ Step 2: Verify downloaded files
+      - name: Verify downloaded files
+        run: |
+          echo "====== Downloaded files ======"
+          ls -la
+          echo "====== .next folder ======"
+          ls -la .next/
+
+      # ✅ Step 3: Login to Azure
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -74,7 +94,7 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_14588C9815304B2DAB31C3D54442E4ED }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8EE9A7B8AC3E4CB38D75B298EE4BEF31 }}
 
-      # ✅ Step 3: Deploy to Azure Web App
+      # ✅ Step 4: Deploy
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
