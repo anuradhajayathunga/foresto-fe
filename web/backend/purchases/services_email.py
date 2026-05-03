@@ -136,4 +136,18 @@ def send_purchase_order_email(to_email: str, subject: str, body: str, html_body:
             fail_silently=False,
         )
     except (SMTPException, OSError) as exc:
-        raise RuntimeError(f"Email delivery failed: {exc}") from exc
+        msg = str(exc) or repr(exc)
+        low = msg.lower()
+
+        if "auth" in low or "authentication" in low or "username" in low or "password" in low or "535" in msg:
+            hint = (
+                "SMTP authentication failed. Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD; "
+                "use an app password for Gmail if 2FA is enabled."
+            )
+            raise RuntimeError(f"Email delivery failed: {hint} ({msg})") from exc
+
+        if "getaddrinfo" in low or "name or service not known" in low or "connect" in low:
+            hint = "Could not connect to SMTP host. Check EMAIL_HOST and EMAIL_PORT settings."
+            raise RuntimeError(f"Email delivery failed: {hint} ({msg})") from exc
+
+        raise RuntimeError(f"Email delivery failed: {msg}") from exc

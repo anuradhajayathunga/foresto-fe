@@ -34,6 +34,17 @@ print(f"[settings] DEBUG           : {DEBUG}")
 print(f"[settings] BASE_DIR        : {BASE_DIR}")
 print(f"[settings] .env exists     : {os.path.exists(dotenv_path)}")
 
+# Ensure SSL cert bundle is available for TLS connections (macOS/local dev)
+# If the environment hasn't provided SSL_CERT_FILE, prefer certifi when installed.
+if not os.environ.get("SSL_CERT_FILE"):
+    try:
+        import certifi
+
+        os.environ["SSL_CERT_FILE"] = certifi.where()
+        print(f"[settings] SSL_CERT_FILE set to certifi bundle: {os.environ['SSL_CERT_FILE']}")
+    except Exception:
+        pass
+
 # ─────────────────────────────────────────────────────
 # ALLOWED HOSTS
 # ─────────────────────────────────────────────────────
