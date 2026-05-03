@@ -34,6 +34,12 @@ jobs:
           test -f web/backend/config/wsgi.py && echo "config/wsgi.py exists"
           test -f web/backend/config/settings.py && echo "config/settings.py exists"
 
+      - name: Normalize startup script
+        working-directory: web/backend
+        run: |
+          sed -i 's/\r$//' startup.sh
+          chmod +x startup.sh
+
       - name: Install dependencies for validation
         working-directory: web/backend
         run: |
@@ -48,11 +54,17 @@ jobs:
           name: python-app
           path: |
             web/backend
+            !web/backend/.env
+            !web/backend/.env.*
             !web/backend/antenv/
             !web/backend/.venv/
+            !web/backend/venv/
             !web/backend/__pycache__/
             !web/backend/**/__pycache__/
-          include-hidden-files: true
+            !web/backend/db.sqlite3
+            !web/backend/media/
+            !web/backend/staticfiles/
+          include-hidden-files: false
           if-no-files-found: error
 
   deploy:
