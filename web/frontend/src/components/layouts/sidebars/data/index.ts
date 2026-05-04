@@ -76,8 +76,8 @@ export const NAV_DATA: NavSection[] = [
         url: "/forecasting",
         icon: Sparkles,
         items: [
-          { title: "Predictive Analytics", url: "/predict" },
-          { title: "Analytics", url: "/analytics" },
+          { title: "Get Predictions", url: "/predict" },
+          { title: "Past Predictions", url: "/analytics" },
           { title: "AI Assistant", url: "/ai" },
         ],
       },
