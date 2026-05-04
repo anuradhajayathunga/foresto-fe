@@ -1,12 +1,9 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import ForecastViewSet, AlertViewSet, DataUploadViewSet
-
-router = DefaultRouter()
-router.register(r'forecasts', ForecastViewSet)
-router.register(r'alerts', AlertViewSet)
-router.register(r'uploads', DataUploadViewSet)
+from django.urls import path
+from .views import DemandForecastView, ForecastHistoryView, IngredientPlanView
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("demand/", DemandForecastView.as_view()),
+    path("history/", ForecastHistoryView.as_view()),
+    path("ingredients_plan/", IngredientPlanView.as_view()),
+
 ]

@@ -31,7 +31,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
       suppressHydrationWarning
       className={cn(poppins.variable, sinhala.variable)}
     >
-      <body className={cn(poppins.className, 'min-h-screen bg-background text-foreground')}> 
+      <body className={cn(poppins.className)}>
         <Providers>{children}</Providers>
         <Toaster position="bottom-right" />
       </body>

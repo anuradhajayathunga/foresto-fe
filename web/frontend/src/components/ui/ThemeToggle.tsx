@@ -25,7 +25,6 @@ export const ThemeToggle: React.FC = () => {
       <button
         onClick={toggleDarkMode}
         className='inline-flex items-center justify-center text-white transition-colors rounded-full size-14 bg-primary/80 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-background cursor-pointer'
-        suppressHydrationWarning
       >
         {darkMode ? (
           <svg

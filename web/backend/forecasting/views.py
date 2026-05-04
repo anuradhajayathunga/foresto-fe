@@ -1,103 +1,67 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import ForecastResult, Alert, DataUpload
-from .serializers import ForecastResultSerializer, AlertSerializer, DataUploadSerializer
-from inventory.models import InventoryItem
-from django.db.models import F
-from django.utils import timezone
+from rest_framework.views import APIView
+
+from inventory.permissions import IsStaff
+from .services import predict_menu_demand
+from .services_history import predict_past_days
+from .services_ingredients import build_ingredient_plan
 
 
-class ForecastViewSet(viewsets.ModelViewSet):
-    queryset = ForecastResult.objects.all()
-    serializer_class = ForecastResultSerializer
-    permission_classes = [IsAuthenticated]
+class DemandForecastView(APIView):
+    permission_classes = [IsStaff]
 
-    def get_queryset(self):
-        restaurant_id = (
-            self.request.headers.get("X-Restaurant-ID")
-            or self.request.META.get("HTTP_X_RESTAURANT_ID")
+    def get(self, request):
+        horizon = int(request.query_params.get("horizon_days", "7"))
+        horizon = max(1, min(horizon, 30))
+
+        top_n = int(request.query_params.get("top_n", "50"))
+        top_n = max(1, min(top_n, 500))
+
+        restaurant_id = None if request.user.is_superuser else getattr(request.user, "restaurant_id", None)
+        if not request.user.is_superuser and not restaurant_id:
+            return Response({"detail": "User has no restaurant assigned."}, status=400)
+
+        data = predict_menu_demand(horizon_days=horizon, top_n=top_n, restaurant_id=restaurant_id)
+        return Response(data)
+
+
+class ForecastHistoryView(APIView):
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        days = int(request.query_params.get("days", "14"))
+        top_n = int(request.query_params.get("top_n", "50"))
+
+        restaurant_id = None if request.user.is_superuser else getattr(request.user, "restaurant_id", None)
+        if not request.user.is_superuser and not restaurant_id:
+            return Response({"detail": "User has no restaurant assigned."}, status=400)
+
+        data = predict_past_days(days=days, top_n=top_n, restaurant_id=restaurant_id)
+        return Response(data)
+
+
+class IngredientPlanView(APIView):
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        horizon = int(request.query_params.get("horizon_days", "7"))
+        horizon = max(1, min(horizon, 30))
+
+        top_n = int(request.query_params.get("top_n", "50"))
+        top_n = max(1, min(top_n, 500))
+
+        scope = (request.query_params.get("scope", "next7") or "next7").lower()
+        if scope not in ("tomorrow", "next7"):
+            scope = "next7"
+
+        restaurant_id = None if request.user.is_superuser else getattr(request.user, "restaurant_id", None)
+        if not request.user.is_superuser and not restaurant_id:
+            return Response({"detail": "User has no restaurant assigned."}, status=400)
+
+        data = build_ingredient_plan(
+            horizon_days=horizon,
+            top_n_items=top_n,
+            scope=scope,
+            restaurant_id=restaurant_id,
         )
-        if restaurant_id:
-            return ForecastResult.objects.filter(
-                inventory_item__restaurant_id=restaurant_id
-            )
-        return ForecastResult.objects.none()
-
-    @action(detail=False, methods=["get"])
-    def dashboard_stats(self, request):
-        restaurant_id = (
-            request.headers.get("X-Restaurant-ID")
-            or request.META.get("HTTP_X_RESTAURANT_ID")
-        )
-
-        forecasts = ForecastResult.objects.all()
-        alerts = Alert.objects.filter(is_read=False)
-        items = InventoryItem.objects.all()
-
-        if restaurant_id:
-            forecasts = forecasts.filter(inventory_item__restaurant_id=restaurant_id)
-            items = items.filter(restaurant_id=restaurant_id)
-            alerts = alerts.filter(restaurant_id=restaurant_id)
-
-        total_demand = sum(f.forecasted_value for f in forecasts)
-        stockouts = alerts.filter(type="stockout").count()
-        inventory_level = sum(i.current_stock for i in items)
-        low_stock = items.filter(current_stock__lte=F("reorder_level")).count()
-
-        return Response({
-            "total_forecasted_demand": total_demand or 0,
-            "predicted_stockouts": stockouts or 0,
-            "inventory_level": inventory_level or 0,
-            "low_stock_items": low_stock or 0,
-        })
-
-
-class AlertViewSet(viewsets.ModelViewSet):
-    queryset = Alert.objects.all()
-    serializer_class = AlertSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        restaurant_id = (
-            self.request.headers.get("X-Restaurant-ID")
-            or self.request.META.get("HTTP_X_RESTAURANT_ID")
-        )
-        if restaurant_id:
-            return Alert.objects.filter(restaurant_id=restaurant_id)
-        return Alert.objects.none()
-
-    @action(detail=False, methods=["post"])
-    def mark_all_read(self, request):
-        restaurant_id = (
-            request.headers.get("X-Restaurant-ID")
-            or request.META.get("HTTP_X_RESTAURANT_ID")
-        )
-        qs = Alert.objects.filter(is_read=False)
-        if restaurant_id:
-            qs = qs.filter(restaurant_id=restaurant_id)
-        updated = qs.update(is_read=True)
-        return Response({"status": "ok", "updated": updated})
-
-    @action(detail=True, methods=["post"])
-    def dismiss(self, request, pk=None):
-        alert = self.get_object()
-        alert.delete()
-        return Response({"status": "dismissed"})
-
-    @action(detail=True, methods=["post"])
-    def resolve(self, request, pk=None):
-        alert = self.get_object()
-        alert.is_read = True
-        alert.save()
-        return Response({"status": "resolved"})
-
-
-class DataUploadViewSet(viewsets.ModelViewSet):
-    queryset = DataUpload.objects.all()
-    serializer_class = DataUploadSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        serializer.save(status="processing", progress=10)
+        return Response(data)

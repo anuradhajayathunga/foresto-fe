@@ -41,7 +41,6 @@ export const AuthButton: React.FC<ButtonProps> = ({
       className={cn(baseStyles, variants[variant], className)}
       disabled={disabled || isLoading}
       aria-busy={isLoading}
-      suppressHydrationWarning
       {...props}
     >
       {isLoading ? (

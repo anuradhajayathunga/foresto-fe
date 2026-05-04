@@ -1,8 +1,8 @@
 import os
 import environ
-import dj_database_url
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import urlparse, parse_qsl
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,7 +11,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
+ALLOWED_HOSTS = []  # set via env when deploying
 
 
 INSTALLED_APPS = [
@@ -28,7 +29,7 @@ INSTALLED_APPS = [
     "django_filters",
 
     # local apps
-    "core",
+     "core",
     "accounts",
     "menu",
     "sales",
@@ -36,9 +37,9 @@ INSTALLED_APPS = [
     "purchases",
     "imports",
     "forecasting",
-    "dashboard",
-    "waste",
-    "suppliers",
+
+
+
 ]
 
 MIDDLEWARE = [
@@ -56,14 +57,14 @@ ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -71,30 +72,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+tmpPostgres = urlparse(env("DATABASE_URL"))
+
 DATABASES = {
-    "default": dj_database_url.parse(env("DATABASE_URL"))
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': 5432,
+        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+    }
 }
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "authorization",
-    "content-type",
-    "origin",
-    "x-csrftoken",
-    "x-requested-with",
-    "x-restaurant-id",
-    "x-restaurant-slug",
-]
+# ✅ CORS (allow both localhost and 127.0.0.1 to avoid token mismatch)
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:3000"],
+)
+
+# If you later use cookies, you’ll need:
+# CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -107,6 +106,7 @@ REST_FRAMEWORK = {
     ],
 }
 
+# JWT config (optional but recommended)
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -127,6 +127,4 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-FORECAST_MODEL_PATH = os.path.join(
-    BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl"
-)
+FORECAST_MODEL_PATH = os.path.join(BASE_DIR, "artifacts", "forecasting", "menu_item_demand_model.pkl")

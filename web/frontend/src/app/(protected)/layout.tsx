@@ -1,18 +1,26 @@
-import Sidebar from "./components/Sidebar";
-import { ReactNode } from "react";
-import { Toaster } from "react-hot-toast";
+import type { PropsWithChildren } from 'react';
+import { Sidebar } from '@/components/layouts/sidebars';
+import { Header } from '@/components/layouts/headers';
+import RootLoading from '../loading';
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
+export default function AdminLayout({ children }: PropsWithChildren) {
   return (
-    <div className="flex min-h-screen font-sans text-white">
-      {/* Toast notification container */}
-      <Toaster position="top-right" />
+    <div className="flex h-screen w-full overflow-hidden bg-muted/10 dark:bg-background">
+      <aside className="hidden md:flex flex-col z-20 border-r bg-background">
+        <Sidebar />
+      </aside>
+      <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden">
+        <header className="flex-none z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <Header />
+        </header>
 
-      <Sidebar />
-
-      <main className="flex-1 bg-[#0f1117] p-10">
-        {children}
-      </main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth">
+          <div className="mx-auto w-full max-w-[1600px] p-4 md:p-6 lg:p-8 animate-in fade-in duration-500">
+            <RootLoading />
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
