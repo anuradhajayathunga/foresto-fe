@@ -156,6 +156,18 @@ function daysAgoISO(days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function startOfYearISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-01-01`;
+}
+
+function daysSinceStartOfYear(): string {
+  const today = new Date();
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+  const diffMs = today.getTime() - startOfYear.getTime();
+  return String(Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24))));
+}
+
 function parseQty(v: unknown): number {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -532,7 +544,7 @@ export default function ForecastAccuracyPage() {
   const ingredientRowsPerPage = 12;
   const bufferRowsPerPage = 12;
   const analysisRowsPerPage = 12;
-  const [dateFrom, setDateFrom] = useState(daysAgoISO(29));
+  const [dateFrom, setDateFrom] = useState(startOfYearISO());
   const [dateTo, setDateTo] = useState(todayISO());
   const [search, setSearch] = useState("");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
@@ -549,7 +561,9 @@ export default function ForecastAccuracyPage() {
   const [bufferPreviewError, setBufferPreviewError] = useState<string | null>(
     null,
   );
-  const [lookbackDaysInput, setLookbackDaysInput] = useState("14");
+  const [lookbackDaysInput, setLookbackDaysInput] = useState(
+    daysSinceStartOfYear(),
+  );
   const [bufferDaysInput, setBufferDaysInput] = useState("3");
   const [alphaInput, setAlphaInput] = useState("0.6");
   const [dashboard, setDashboard] = useState<ForecastAccuracyData>({

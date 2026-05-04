@@ -434,7 +434,7 @@ export default function PurchasesPage() {
               <TableHead>Supplier</TableHead>
               <TableHead>Invoice No</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right pr-8">Total Amount</TableHead>
+              {/* <TableHead className="text-right pr-8">Total Amount</TableHead> */}
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -482,11 +482,11 @@ export default function PurchasesPage() {
                     {statusBadge(p.status)}
                   </div>
                 </TableCell>
-                <TableCell className="text-right pr-8">
+                {/* <TableCell className="text-right pr-8">
                   <div className="font-bold tabular-nums">
                     {formatCurrency(Number(p.total))}
                   </div>
-                </TableCell>
+                </TableCell> */}
 
                 <TableCell>
                   <DropdownMenu>
